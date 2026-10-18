@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dotlet · 序列点阵图 / Sequence Dot Plot</title>
+<meta name="description" content="dotlet — 双序列滑动窗口点阵图工具，中英双语，全部计算在本地浏览器完成。">
+<style>
+  :root{
+    --indigo:#3f51b5;
+    --indigo-d:#303f9f;
+    --indigo-l:#e8eaf6;
+    --indigo-2:#5f71cc;
+    --page:#eeeeee;
+    --paper:#ffffff;
+    --line:#e0e0e0;
+    --line-2:#cfcfcf;
+    --ink:#212121;
+    --ink-2:#424242;
+    --muted:#757575;
+    --faint:#9e9e9e;
+    --red:#d32f2f;
+    --amber:#ef6c00;
+    --sans:"Roboto","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --mono:"Roboto Mono","JetBrains Mono","Cascadia Mono",Consolas,"Liberation Mono",ui-monospace,monospace;
+    --sh1:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+    --sh2:0 3px 6px rgba(0,0,0,.14),0 2px 4px rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--page);color:var(--ink);
+    font-family:var(--sans);font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--indigo);text-decoration:none}
+  a:hover{text-decoration:underline}
+  button{font-family:inherit}
+  .mono{font-family:var(--mono)}
+
+  /* ================= app bar ================= */
+  .appbar{
+    position:sticky;top:0;z-index:40;background:var(--indigo);
+    box-shadow:0 2px 4px rgba(0,0,0,.26);
+  }
+  .appbar-in{
+    max-width:1400px;margin:0 auto;height:52px;padding:0 24px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:9px}
+  .mark{
+    width:13px;height:13px;border-radius:50%;background:#fff;flex:none;
+    box-shadow:0 0 0 3px rgba(255,255,255,.22);
+  }
+  .name{color:#fff;font-size:19px;font-weight:500;letter-spacing:.2px;line-height:1}
+  .tag{
+    color:#fff;font-size:11px;opacity:.75;border:1px solid rgba(255,255,255,.55);
+    border-radius:2px;padding:0 4px;line-height:16px;margin-left:2px;
+  }
+  .appbar-sub{
+    color:rgba(255,255,255,.82);font-size:12.5px;padding-left:12px;
+    border-left:1px solid rgba(255,255,255,.3);margin-left:2px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .appbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .abtn{
+    color:#fff;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    padding:6px 10px;border-radius:2px;opacity:.9;
+  }
+  .abtn:hover{background:rgba(255,255,255,.12);text-decoration:none;opacity:1}
+  .lang{display:inline-flex;border:1px solid rgba(255,255,255,.5);border-radius:2px;overflow:hidden}
+  .lang button{
+    background:transparent;border:0;color:#fff;font-size:12px;padding:4px 10px;cursor:pointer;opacity:.85;
+  }
+  .lang button.on{background:#fff;color:var(--indigo);opacity:1;font-weight:500}
+  .lang button:not(.on):hover{background:rgba(255,255,255,.14)}
+
+  /* ================= tab bar ================= */
+  .tabbar{
+    position:sticky;top:52px;z-index:35;background:var(--paper);
+    border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.05);
+  }
+  .tabbar-in{
+    max-width:1400px;margin:0 auto;padding:10px 24px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .tab{
+    display:inline-flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid var(--line-2);border-radius:2px;
+    color:var(--ink-2);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:7px 14px;cursor:pointer;line-height:1.4;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .tab:hover{background:#eef0fa;border-color:#c5cae9;color:var(--indigo)}
+  .tab.on{background:var(--indigo);border-color:var(--indigo);color:#fff;box-shadow:var(--sh1)}
+  .tab.on:hover{background:#3949ab;border-color:#3949ab;color:#fff}
+  .tab:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+  .tab em{
+    font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:0;
+    opacity:.7;text-transform:none;
+  }
+  .tab.on em{opacity:.9}
+  .quick{margin-left:auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .qfield{display:flex;align-items:center;gap:6px}
+  .qfield label{font-size:11px;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+  .qfield select,.qfield input{
+    font-family:var(--sans);font-size:12.5px;color:var(--ink);
+    background:#fff;border:1px solid var(--line-2);border-radius:2px;
+    padding:4px 6px;outline:none;height:30px;
+  }
+  .qfield input{width:64px;font-family:var(--mono);text-align:center}
+  .qfield select{cursor:pointer;max-width:180px}
+  .qfield select:focus,.qfield input:focus{border-color:var(--indigo);box-shadow:0 0 0 2px rgba(63,81,181,.15)}
+
+  /* ================= buttons ================= */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    font-size:12.5px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+    background:#fff;color:var(--ink-2);border:1px solid var(--line-2);border-radius:2px;
+    padding:7px 14px;cursor:pointer;line-height:1.4;
+    transition:background .15s,box-shadow .15s,color .15s;
+  }
+  .btn:hover{background:#f5f5f5}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;box-shadow:var(--sh1)}
+  .btn.primary:hover{background:var(--indigo-d);border-color:var(--indigo-d);box-shadow:var(--sh2)}
+  .btn.flat{background:transparent;border-color:transparent;color:var(--indigo);text-transform:none;letter-spacing:.02em}
+  .btn.flat:hover{background:var(--indigo-l)}
+  .btn:disabled{opacity:.38;cursor:not-allowed;box-shadow:none}
+
+  /* ================= editor panel ================= */
+  .panelwrap{max-width:1400px;margin:0 auto;padding:0 24px}
+  .panel{background:#fff;box-shadow:var(--sh1);border-radius:2px;margin-top:14px}
+  .panel[hidden]{display:none}
+  .pane[hidden]{display:none}
+  .panel-body{padding:14px 16px 10px}
+  .panel-foot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:0 16px 12px;color:var(--muted);font-size:11.5px;
+  }
+  .panel-foot .sp{margin-left:auto}
+  textarea{
+    width:100%;height:118px;resize:vertical;display:block;
+    font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink);
+    background:#fafafa;border:1px solid var(--line);border-radius:2px;
+    padding:10px 12px;outline:none;
+  }
+  textarea:focus{background:#fff;border-color:var(--indigo);box-shadow:0 0 0 2px rgba(63,81,181,.12)}
+  textarea::placeholder{color:#bdbdbd}
+  .pmeta{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .pmeta b{font-weight:500;color:var(--ink-2)}
+  .pmeta .warn{color:var(--amber)}
+
+  .paramgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px 22px}
+  .pfield > label{
+    display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px;
+  }
+  .pfield select{
+    width:100%;font-size:12.5px;padding:6px 8px;border:1px solid var(--line-2);
+    border-radius:2px;background:#fff;color:var(--ink);height:32px;
+  }
+  .pfield .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .check{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);cursor:pointer;user-select:none;height:32px}
+  .check input{width:15px;height:15px;accent-color:var(--indigo);margin:0;cursor:pointer}
+
+  /* ================= workspace ================= */
+  .workspace{
+    max-width:1400px;margin:14px auto 0;padding:0 24px;
+    display:grid;grid-template-columns:minmax(0,1fr) 272px;gap:16px;align-items:start;
+  }
+  @media (max-width:1020px){ .workspace{grid-template-columns:1fr} }
+
+  .plotcard{background:#fff;box-shadow:var(--sh1);border-radius:2px;padding:12px 12px 0;min-width:0}
+  .canvwrap{position:relative;margin:0 auto;width:max-content;max-width:100%}
+  canvas{display:block}
+  #cvBase{background:#fff}
+  #cvOver{position:absolute;left:0;top:0;cursor:crosshair;touch-action:none}
+  .empty{
+    position:absolute;inset:12px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:8px;text-align:center;background:#fafafa;
+    border:1px dashed var(--line-2);color:var(--muted);pointer-events:none;
+  }
+  .empty h4{margin:0;font-size:13px;font-weight:500;color:var(--ink-2)}
+  .empty p{margin:0;font-size:12px;max-width:36ch;line-height:1.6}
+
+  .caption{
+    text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    padding:6px 4px 10px;min-height:26px;
+  }
+  .zoombtns{position:absolute;right:6px;top:6px;display:flex;flex-direction:column;gap:6px;z-index:5}
+  .zbtn{
+    width:30px;height:30px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(255,255,255,.94);color:var(--ink-2);font-size:15px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh1);padding:0;
+  }
+  .zbtn:hover{background:#fff;color:var(--indigo)}
+  .zbtn:disabled{opacity:.35;cursor:not-allowed}
+
+  .panrow{border-top:1px solid var(--line);padding:8px 4px 10px;display:grid;gap:6px}
+  .pan-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .pan-h b{font-family:var(--mono);font-size:10.5px;font-weight:400;color:var(--faint);
+    letter-spacing:0;text-transform:none}
+  .pan{display:grid;grid-template-columns:16px 1fr;gap:8px;align-items:center}
+  .pan span{font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:center}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:16px;background:transparent;
+    cursor:pointer;display:block;margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-2)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--indigo);
+    border:0;margin-top:-5px;box-shadow:0 1px 2px rgba(0,0,0,.2);
+  }
+  input[type=range]:disabled::-webkit-slider-thumb{background:#bdbdbd;box-shadow:none}
+  input[type=range]::-moz-range-track{height:2px;background:var(--line-2)}
+  input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--indigo);border:0}
+
+  /* ================= side column ================= */
+  .sidecol{display:flex;flex-direction:column;gap:16px}
+  .sidecard{background:#fff;box-shadow:var(--sh1);border-radius:2px;padding:12px}
+  .side-h{
+    display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    margin-bottom:8px;
+  }
+  .side-h b{
+    font-family:var(--mono);font-size:10.5px;font-weight:400;color:var(--faint);
+    letter-spacing:0;text-transform:none;
+  }
+  #cvMini{width:100%;display:block;cursor:crosshair;border:1px solid var(--line)}
+  .mini-note{font-size:10.5px;color:var(--faint);margin-top:6px;line-height:1.5}
+  #cvHist{width:100%;display:block}
+  .hist-ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px}
+
+  .sfield + .sfield{margin-top:12px}
+  .sfield-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px}
+  .sfield-h span{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .sfield-h b{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--indigo)}
+  .tickrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:-2px}
+
+  /* ================= inspector ================= */
+  .inspector{background:#fff;box-shadow:var(--sh1);border-radius:2px;margin-top:16px}
+  .insp-head{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 14px;border-bottom:1px solid var(--line);
+  }
+  .insp-head h3{
+    margin:0;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);font-weight:500;
+  }
+  .insp-coord{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+  .insp-head .sp{margin-left:auto}
+  .insp-body{padding:12px 14px 14px}
+  .irow{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:start}
+  .irow + .irow{margin-top:6px}
+  .itag{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:24px;text-align:right}
+  .iseq{
+    font-family:var(--mono);font-size:12.5px;line-height:24px;letter-spacing:.09em;
+    background:#fafafa;border:1px solid var(--line);padding:4px 10px;
+    max-height:96px;overflow:auto;word-break:break-all;color:var(--ink-2);
+  }
+  .iseq .x{color:#fff;background:var(--red)}
+  .iseq.tick{border-style:dashed;color:#bdbdbd;background:#fff;padding-top:2px;padding-bottom:2px}
+  .insp-note{font-size:12px;color:var(--muted);padding:6px 0 0 62px;line-height:1.6}
+  .insp-note b{color:var(--ink-2);font-weight:500;font-family:var(--mono)}
+  .insp-empty{font-size:12px;color:var(--faint);padding:4px 0 8px}
+
+  /* ================= footer ================= */
+  .appfoot{background:var(--indigo-d);color:rgba(255,255,255,.86);margin-top:32px}
+  .appfoot-in{
+    max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;gap:14px;
+    flex-wrap:wrap;align-items:center;font-size:11.5px;
+  }
+  .appfoot .sp{margin-left:auto}
+
+  /* ================= toast ================= */
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);
+    background:#323232;color:#fff;font-size:13px;padding:10px 16px;border-radius:2px;
+    box-shadow:var(--sh2);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99;
+  }
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="name">dotlet</span>
+      <span class="tag">β</span>
+      <span class="appbar-sub" data-i18n="tagline">序列点阵图</span>
+    </div>
+    <div class="appbar-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button id="btnZh" type="button">中文</button>
+        <button id="btnEn" type="button">EN</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="tabbar">
+  <div class="tabbar-in">
+    <button class="tab on" type="button" data-pane="1">
+      <span data-i18n="tab.seq1">序列 1</span><em id="tabLen1">—</em>
+    </button>
+    <button class="tab" type="button" data-pane="2">
+      <span data-i18n="tab.seq2">序列 2</span><em id="tabLen2">—</em>
+    </button>
+    <button class="tab" type="button" data-pane="p">
+      <span data-i18n="tab.params">参数</span>
+    </button>
+
+    <div class="quick">
+      <div class="qfield">
+        <label for="numWindow" data-i18n="q.window">窗口大小</label>
+        <input id="numWindow" type="number" min="3" max="201" step="2" value="21">
+      </div>
+      <div class="qfield">
+        <label for="selScheme" data-i18n="q.matrix">打分方案</label>
+        <select id="selScheme">
+          <option value="identity" data-i18n="opt.identity">一致性 1/0</option>
+          <option value="nuc44" data-i18n="opt.nuc44">NUC.4.4 · 核酸</option>
+          <option value="blosum62" data-i18n="opt.blosum62">BLOSUM62 · 蛋白质</option>
+        </select>
+      </div>
+      <div class="qfield">
+        <label for="selMode" data-i18n="q.mode">比对模式</label>
+        <select id="selMode">
+          <option value="forward" data-i18n="opt.forward">A ↔ B（正向）</option>
+          <option value="revcomp" data-i18n="opt.revcomp">A ↔ B 反向互补</option>
+          <option value="self" data-i18n="opt.self">A 自比对</option>
+        </select>
+      </div>
+      <button class="btn primary" id="btnPlot" data-i18n="btn.plot">生成点阵图</button>
+    </div>
+  </div>
+</div>
+
+<div class="panelwrap">
+  <div class="panel" id="panel">
+    <div class="pane" id="pane1">
+      <div class="panel-body">
+        <textarea id="editArea" spellcheck="false" data-i18n-ph="ph.seq" placeholder="粘贴 FASTA 或纯序列"></textarea>
+      </div>
+      <div class="panel-foot">
+        <div class="pmeta" id="meta1"></div>
+        <span class="sp"></span>
+        <button class="btn flat" type="button" id="btnCopy1" data-i18n="btn.copyFrom2">由序列 2 复制</button>
+        <button class="btn flat" type="button" id="btnDemo" data-i18n="btn.demo">载入示例</button>
+        <button class="btn flat" type="button" id="btnClear" data-i18n="btn.clear">清空</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane2" hidden>
+      <div class="panel-body">
+        <textarea id="editArea2" spellcheck="false" data-i18n-ph="ph.seq" placeholder="粘贴 FASTA 或纯序列"></textarea>
+      </div>
+      <div class="panel-foot">
+        <div class="pmeta" id="meta2"></div>
+        <span class="sp"></span>
+        <button class="btn flat" type="button" id="btnCopy2" data-i18n="btn.copyFrom1">由序列 1 复制</button>
+        <span class="pmeta" data-i18n-html="hint.shortcut">按 <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> 生成</span>
+      </div>
+    </div>
+
+    <div class="pane" id="paneP" hidden>
+      <div class="panel-body">
+        <div class="paramgrid">
+          <div class="pfield">
+            <label for="selCmap" data-i18n="lbl.cmap">配色</label>
+            <select id="selCmap">
+              <option value="grey" data-i18n="opt.grey">灰阶</option>
+              <option value="indigo" data-i18n="opt.indigo">靛蓝</option>
+              <option value="ember" data-i18n="opt.ember">赭石</option>
+            </select>
+          </div>
+          <div class="pfield">
+            <label data-i18n="lbl.display">显示</label>
+            <div class="row">
+              <label class="check"><input type="checkbox" id="chkAuto" checked><span data-i18n="lbl.auto">自动对比度</span></label>
+              <label class="check"><input type="checkbox" id="chkGrid" checked><span data-i18n="lbl.grid">坐标格</span></label>
+            </div>
+          </div>
+          <div class="pfield">
+            <label data-i18n="lbl.export">导出</label>
+            <div class="row">
+              <button class="btn" type="button" id="btnPng">PNG</button>
+              <button class="btn" type="button" id="btnCsv">CSV</button>
+              <button class="btn" type="button" id="btnCaption" data-i18n="btn.caption">复制图注</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel-foot">
+        <div class="pmeta" id="matrixStats"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="demoNote" hidden>
+    <div class="panel-body" style="padding-bottom:14px">
+      <div id="demoText" style="font-size:12px;line-height:1.75;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+  <div>
+    <div class="plotcard">
+      <div class="canvwrap" id="canvwrap">
+        <canvas id="cvBase"></canvas>
+        <canvas id="cvOver"></canvas>
+        <div class="zoombtns">
+          <button class="zbtn" id="btnZoomIn" type="button" title="放大" data-i18n-title="tip.zoomin">+</button>
+          <button class="zbtn" id="btnZoomOut" type="button" title="缩小" data-i18n-title="tip.zoomout">−</button>
+        </div>
+        <div class="empty" id="emptyState">
+          <h4 data-i18n="empty.title">尚未生成点阵图</h4>
+          <p data-i18n="empty.body">输入两条序列，然后按「生成点阵图」。</p>
+        </div>
+      </div>
+      <div class="caption" id="caption"></div>
+      <div class="panrow">
+        <div class="pan-h"><span data-i18n="pan.title">视野位置</span><b id="panInfo"></b></div>
+        <div class="pan"><span>A</span><input type="range" id="panY" min="0" max="0" step="1" value="0" disabled></div>
+        <div class="pan"><span>B</span><input type="range" id="panX" min="0" max="0" step="1" value="0" disabled></div>
+      </div>
+    </div>
+
+    <div class="inspector">
+      <div class="insp-head">
+        <h3 data-i18n="insp.title">局部比对</h3>
+        <span class="insp-coord" id="inspCoord"></span>
+        <span class="sp"></span>
+        <button class="btn flat" id="btnCopySeg" type="button" style="display:none" data-i18n="btn.copySeg">复制片段</button>
+      </div>
+      <div class="insp-body">
+        <div class="insp-empty" id="inspEmpty" data-i18n="insp.hint">单击点阵图上的任意位置，查看该处的窗口比对。</div>
+        <div id="inspBody" hidden>
+          <div class="irow"><span class="itag">1</span><div class="iseq" id="segA"></div></div>
+          <div class="irow"><span class="itag"></span><div class="iseq tick" id="segM"></div></div>
+          <div class="irow"><span class="itag">2</span><div class="iseq" id="segB"></div></div>
+          <div class="insp-note" id="segNote"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="sidecol">
+    <div class="sidecard">
+      <div class="side-h"><span data-i18n="side.mini">缩略图</span><b id="miniInfo"></b></div>
+      <canvas id="cvMini" width="240" height="240"></canvas>
+      <div class="mini-note" data-i18n="side.miniNote">红框为当前视野；点击可跳转。</div>
+    </div>
+
+    <div class="sidecard">
+      <div class="side-h"><span data-i18n="side.hist">分数分布</span><b id="histInfo"></b></div>
+      <canvas id="cvHist" height="92"></canvas>
+      <div class="hist-ticks"><span id="histMin">0</span><span id="histMax">1</span></div>
+    </div>
+
+    <div class="sidecard">
+      <div class="side-h"><span data-i18n="side.grey">灰度范围</span></div>
+      <div class="sfield">
+        <div class="sfield-h"><span data-i18n="lbl.lower">下限（阈值）</span><b id="vThr">75%</b></div>
+        <input type="range" id="rThreshold" min="0" max="99" step="1" value="75">
+        <div class="tickrow"><span>0%</span><span>100%</span></div>
+      </div>
+      <div class="sfield">
+        <div class="sfield-h"><span data-i18n="lbl.upper">上限</span><b id="vHi">—</b></div>
+        <input type="range" id="rHi" min="1" max="100" step="1" value="100">
+        <div class="tickrow"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+
+    <div class="sidecard">
+      <div class="side-h"><span data-i18n="side.info">矩阵</span></div>
+      <div class="pmeta" id="sideStats" style="display:block;line-height:1.95"></div>
+    </div>
+  </aside>
+</div>
+
+
+<footer class="appfoot">
+  <div class="appfoot-in">
+    <span data-i18n="footer.local">全部计算在本地浏览器完成，序列不会上传。</span>
+    <span class="sp"></span>
+    <span>dotlet · single-file · no dependencies</span>
+  </div>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================================
+     0. 文案
+     ========================================================================= */
+  var I18N = {
+    zh: {
+      'tagline': '序列点阵图',
+      'tab.seq1': '序列 1',
+      'tab.seq2': '序列 2',
+      'tab.params': '参数',
+      'q.window': '窗口大小',
+      'q.matrix': '打分方案',
+      'q.mode': '比对模式',
+      'opt.identity': '一致性 1/0',
+      'opt.nuc44': 'NUC.4.4 · 核酸',
+      'opt.blosum62': 'BLOSUM62 · 蛋白质',
+      'opt.forward': 'A ↔ B（正向）',
+      'opt.revcomp': 'A ↔ B 反向互补',
+      'opt.self': 'A 自比对',
+      'opt.grey': '灰阶',
+      'opt.indigo': '靛蓝',
+      'opt.ember': '赭石',
+      'lbl.cmap': '配色',
+      'lbl.display': '显示',
+      'lbl.export': '导出',
+      'lbl.auto': '自动对比度',
+      'lbl.grid': '坐标格',
+      'lbl.lower': '下限（阈值）',
+      'lbl.upper': '上限',
+      'btn.plot': '生成点阵图',
+      'btn.demo': '载入示例',
+      'btn.clear': '清空',
+      'btn.caption': '复制图注',
+      'btn.copySeg': '复制片段',
+      'btn.copyFrom2': '由序列 2 复制',
+      'btn.copyFrom1': '由序列 1 复制',
+      'ph.seq': '粘贴 FASTA 或纯序列',
+      'hint.shortcut': '按 <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> 生成',
+      'meta.len': '长度',
+      'meta.gc': 'GC',
+      'meta.unknown': '非标准字符',
+      'meta.empty': '空',
+      'type.dna': 'DNA',
+      'type.rna': 'RNA',
+      'type.protein': '蛋白质',
+      'type.unknown': '类型未识别',
+      'empty.title': '尚未生成点阵图',
+      'empty.body': '输入两条序列，然后按「生成点阵图」。',
+      'side.mini': '缩略图',
+      'side.miniNote': '红框为当前视野；点击可跳转。',
+      'side.hist': '分数分布',
+      'side.grey': '灰度范围',
+      'side.info': '矩阵',
+      'pan.title': '视野位置',
+      'insp.title': '局部比对',
+      'insp.hint': '单击点阵图上的任意位置，查看该处的窗口比对。',
+      'insp.identity': '窗口一致性',
+      'caption.tpl': '[{n} × {m}]  A {i} · B {j}  分数 {s} · {mode}',
+      'caption.none': '[{n} × {m}]  窗口 {w} · {scheme} · {mode}',
+      'cap.mode.forward': '正向',
+      'cap.mode.revcomp': '反向互补',
+      'cap.mode.self': '自比对',
+      'stat.matrix': '矩阵',
+      'stat.time': '耗时',
+      'stat.max': '最高分',
+      'stat.cells': '格',
+      'footer.local': '全部计算在本地浏览器完成，序列不会上传。',
+      'tip.zoomin': '放大 2×',
+      'tip.zoomout': '缩小',
+      'toast.copied': '已复制到剪贴板',
+      'toast.copyFail': '复制失败，请手动选择文本',
+      'toast.noPlot': '请先生成点阵图',
+      'err.emptyA': '请先输入序列 1。',
+      'err.emptyB': '请先输入序列 2。',
+      'err.short': '序列长度至少为 3。',
+      'err.tooBig': '矩阵规模 {n} × {m} = {cells} 格，超过上限 {max} 格。请截取较短片段后再试。',
+      'err.rcProtein': '反向互补只适用于核酸序列。',
+      'demo.note': '合成序列，非真实数据。序列 1 长 {n} bp；序列 2 由它派生：约 5% 随机替换、第 400 位缺失 40 bp、第 700 位插入 150 bp、900–1100 的 200 bp 串联重复（序列 2 中起始约 1210）、以及 800–940 的反向互补片段 140 bp。正向模式下应看到主对角线在 400 与 700 处断裂平移，另有一条 200 bp 的平行条带；切到反向互补模式，那段 140 bp 反向重复才会显示为一条对角线。'
+    },
+    en: {
+      'tagline': 'Sequence dot plot',
+      'tab.seq1': 'Sequence 1',
+      'tab.seq2': 'Sequence 2',
+      'tab.params': 'Parameters',
+      'q.window': 'Window size',
+      'q.matrix': 'Scoring matrix',
+      'q.mode': 'Comparison',
+      'opt.identity': 'Identity 1/0',
+      'opt.nuc44': 'NUC.4.4 · nucleotide',
+      'opt.blosum62': 'BLOSUM62 · protein',
+      'opt.forward': 'A ↔ B (forward)',
+      'opt.revcomp': 'A ↔ reverse complement of B',
+      'opt.self': 'A against itself',
+      'opt.grey': 'Greyscale',
+      'opt.indigo': 'Indigo',
+      'opt.ember': 'Ember',
+      'lbl.cmap': 'Colour map',
+      'lbl.display': 'Display',
+      'lbl.export': 'Export',
+      'lbl.auto': 'Auto contrast',
+      'lbl.grid': 'Grid',
+      'lbl.lower': 'Lower bound (threshold)',
+      'lbl.upper': 'Upper bound',
+      'btn.plot': 'Plot',
+      'btn.demo': 'Load example',
+      'btn.clear': 'Clear',
+      'btn.caption': 'Copy caption',
+      'btn.copySeg': 'Copy segments',
+      'btn.copyFrom2': 'Copy from sequence 2',
+      'btn.copyFrom1': 'Copy from sequence 1',
+      'ph.seq': 'Paste FASTA or raw sequence',
+      'hint.shortcut': 'Press <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to plot',
+      'meta.len': 'length',
+      'meta.gc': 'GC',
+      'meta.unknown': 'non-standard',
+      'meta.empty': 'empty',
+      'type.dna': 'DNA',
+      'type.rna': 'RNA',
+      'type.protein': 'protein',
+      'type.unknown': 'unrecognised',
+      'empty.title': 'No plot yet',
+      'empty.body': 'Enter two sequences, then press Plot.',
+      'side.mini': 'Minimap',
+      'side.miniNote': 'Red box = current view; click to jump.',
+      'side.hist': 'Score distribution',
+      'side.grey': 'Greyscale range',
+      'side.info': 'Matrix',
+      'pan.title': 'View position',
+      'insp.title': 'Local comparison',
+      'insp.hint': 'Click anywhere on the plot to inspect the window alignment.',
+      'insp.identity': 'Window identity',
+      'caption.tpl': '[{n} × {m}]  A {i} · B {j}  score {s} · {mode}',
+      'caption.none': '[{n} × {m}]  window {w} · {scheme} · {mode}',
+      'cap.mode.forward': 'forward',
+      'cap.mode.revcomp': 'rev-comp',
+      'cap.mode.self': 'self',
+      'stat.matrix': 'matrix',
+      'stat.time': 'time',
+      'stat.max': 'max score',
+      'stat.cells': 'cells',
+      'footer.local': 'All computation runs locally in your browser; sequences are never uploaded.',
+      'tip.zoomin': 'Zoom in 2×',
+      'tip.zoomout': 'Zoom out',
+      'toast.copied': 'Copied to clipboard',
+      'toast.copyFail': 'Copy failed — select the text manually',
+      'toast.noPlot': 'Plot something first',
+      'err.emptyA': 'Sequence 1 is empty.',
+      'err.emptyB': 'Sequence 2 is empty.',
+      'err.short': 'Sequences must be at least 3 residues long.',
+      'err.tooBig': 'Matrix is {n} × {m} = {cells} cells, above the {max}-cell limit. Trim the sequences and retry.',
+      'err.rcProtein': 'Reverse complement applies to nucleotide sequences only.',
+      'demo.note': 'Synthetic sequences, not real data. Sequence 1 is {n} bp. Sequence 2 is derived from it with ~5% random substitutions, a 40 bp deletion at position 400, a 150 bp insertion at 700, a 200 bp tandem duplication of 900–1100 (starting near 1210 in sequence 2), and a 140 bp reverse-complement insert of 800–940. In forward mode expect the main diagonal to break and shift at 400 and 700 plus one parallel 200 bp band; switch to reverse-complement mode and that 140 bp inverted repeat becomes a clean diagonal.'
+    }
+  };
+
+  var LANG = 'zh';
+  function t(key, vars) {
+    var s = (I18N[LANG] && I18N[LANG][key]);
+    if (s === undefined) s = (I18N.zh[key] !== undefined ? I18N.zh[key] : key);
+    if (vars) {
+      for (var k in vars) {
+        if (Object.prototype.hasOwnProperty.call(vars, k)) s = s.split('{' + k + '}').join(vars[k]);
+      }
+    }
+    return s;
+  }
+
+  /* =========================================================================
+     1. 工具
+     ========================================================================= */
+  var MAX_CELLS = 16000000;
+  var $ = function (id) { return document.getElementById(id); };
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function pct(v, d) { return (v * 100).toFixed(d === undefined ? 1 : d) + '%'; }
+
+  var RAMPS = {
+    grey:   [[255, 255, 255], [33, 33, 33]],
+    indigo: [[255, 255, 255], [63, 81, 181]],
+    ember:  [[255, 255, 255], [168, 74, 22]]
+  };
+  function makeLut(ramp) {
+    var lut = new Uint8Array(256 * 3);
+    for (var i = 0; i < 256; i++) {
+      var f = i / 255;
+      lut[i * 3]     = Math.round(ramp[0][0] + (ramp[1][0] - ramp[0][0]) * f);
+      lut[i * 3 + 1] = Math.round(ramp[0][1] + (ramp[1][1] - ramp[0][1]) * f);
+      lut[i * 3 + 2] = Math.round(ramp[0][2] + (ramp[1][2] - ramp[0][2]) * f);
+    }
+    return lut;
+  }
+  var LUTS = { grey: makeLut(RAMPS.grey), indigo: makeLut(RAMPS.indigo), ember: makeLut(RAMPS.ember) };
+
+  /* =========================================================================
+     2. 序列
+     ========================================================================= */
+  var AA20 = 'ARNDCQEGHILKMFPSTWYV';
+
+  function parseSeq(raw) {
+    var lines = String(raw || '').split(/\r?\n/);
+    var kept = [];
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      if (/^\s*>/.test(l)) continue;
+      if (/^\s*;/.test(l)) continue;
+      kept.push(l);
+    }
+    return kept.join('').replace(/[\s\d]/g, '').toUpperCase();
+  }
+
+  function classify(s) {
+    if (!s) return { type: 'empty', validFrac: 1 };
+    var nuc = 0, aa = 0, valid = 0;
+    var nucSet = 'ACGTU', aaSet = AA20 + 'BJZX*';
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      var isN = nucSet.indexOf(c) >= 0, isA = aaSet.indexOf(c) >= 0;
+      if (isN) nuc++;
+      if (isA) aa++;
+      if (isN || isA) valid++;
+    }
+    var n = s.length, type = 'unknown';
+    if (nuc / n >= 0.95) type = (s.indexOf('U') >= 0 && s.indexOf('T') < 0) ? 'rna' : 'dna';
+    else if (aa / n >= 0.95) type = 'protein';
+    return { type: type, validFrac: valid / n };
+  }
+
+  function gcContent(s) {
+    var gc = 0, at = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === 'G' || c === 'C') gc++;
+      else if (c === 'A' || c === 'T' || c === 'U') at++;
+    }
+    var d = gc + at;
+    return d ? gc / d : 0;
+  }
+
+  var COMP = { A: 'T', T: 'A', G: 'C', C: 'G', U: 'A', N: 'N', R: 'Y', Y: 'R', S: 'S', W: 'W', K: 'M', M: 'K', B: 'V', V: 'B', D: 'H', H: 'D' };
+  function revcomp(s) {
+    var out = [];
+    for (var i = s.length - 1; i >= 0; i--) out.push(COMP[s[i]] || 'N');
+    return out.join('');
+  }
+
+  /* =========================================================================
+     3. 打分方案
+     ========================================================================= */
+  var BLOSUM62_ROWS = [
+    [ 4,-1,-2,-2, 0,-1,-1, 0,-2,-1,-1,-1,-1,-2,-1, 1, 0,-3,-2, 0],
+    [-1, 5, 0,-2,-3, 1, 0,-2, 0,-3,-2, 2,-1,-3,-2,-1,-1,-3,-2,-3],
+    [-2, 0, 6, 1,-3, 0, 0, 0, 1,-3,-3, 0,-2,-3,-2, 1, 0,-4,-2,-3],
+    [-2,-2, 1, 6,-3, 0, 2,-1,-1,-3,-4,-1,-3,-3,-1, 0,-1,-4,-3,-3],
+    [ 0,-3,-3,-3, 9,-3,-4,-3,-3,-1,-1,-3,-1,-2,-3,-1,-1,-2,-2,-1],
+    [-1, 1, 0, 0,-3, 5, 2,-2, 0,-3,-2, 1, 0,-3,-1, 0,-1,-2,-1,-2],
+    [-1, 0, 0, 2,-4, 2, 5,-2, 0,-3,-3, 1,-2,-3,-1, 0,-1,-3,-2,-2],
+    [ 0,-2, 0,-1,-3,-2,-2, 6,-2,-4,-4,-2,-3,-3,-2, 0,-2,-2,-3,-3],
+    [-2, 0, 1,-1,-3, 0, 0,-2, 8,-3,-3,-1,-2,-1,-2,-1,-2,-2, 2,-3],
+    [-1,-3,-3,-3,-1,-3,-3,-4,-3, 4, 2,-3, 1, 0,-3,-2,-1,-3,-1, 3],
+    [-1,-2,-3,-4,-1,-2,-3,-4,-3, 2, 4,-2, 2, 0,-3,-2,-1,-2,-1, 1],
+    [-1, 2, 0,-1,-3, 1, 1,-2,-1,-3,-2, 5,-1,-3,-1, 0,-1,-3,-2,-2],
+    [-1,-1,-2,-3,-1, 0,-2,-3,-2, 1, 2,-1, 5, 0,-2,-1,-1,-1,-1, 1],
+    [-2,-3,-3,-3,-2,-3,-3,-3,-1, 0, 0,-3, 0, 6,-4,-2,-2, 1, 3,-1],
+    [-1,-2,-2,-1,-3,-1,-1,-2,-2,-3,-3,-1,-2,-4, 7,-1,-1,-4,-3,-2],
+    [ 1,-1, 1, 0,-1, 0, 0, 0,-1,-2,-2, 0,-1,-2,-1, 4, 1,-3,-2,-2],
+    [ 0,-1, 0,-1,-1,-1,-1,-2,-2,-1,-1,-1,-1,-2,-1, 1, 5,-2,-2, 0],
+    [-3,-3,-4,-4,-2,-2,-3,-2,-2,-3,-2,-3,-1, 1,-4,-3,-2,11, 2,-3],
+    [-2,-2,-2,-3,-2,-1,-2,-3, 2,-1,-1,-2,-1, 3,-3,-2,-2, 2, 7,-1],
+    [ 0,-3,-3,-3,-1,-2,-2,-3,-3, 3, 1,-2, 1,-1,-2,-2, 0,-3,-1, 4]
+  ];
+  /* NUC.4.4 (EMBOSS / Todd Lowe 1992)：仅同配 +5，其余一律 -4；
+     歧义码按期望值（如 A/R、A/W、A/M 记 +1），此处只列 ACGT 四行 */
+  var NUC44_ROWS = [
+    [ 5,-4,-4,-4],
+    [-4, 5,-4,-4],
+    [-4,-4, 5,-4],
+    [-4,-4,-4, 5]
+  ];
+
+  function buildIndex(letters) {
+    var idx = new Int8Array(256);
+    for (var i = 0; i < 256; i++) idx[i] = -1;
+    for (var k = 0; k < letters.length; k++) idx[letters.charCodeAt(k) & 255] = k;
+    return idx;
+  }
+
+  var SCHEMES = {
+    identity: { kind: 'identity', sMax: 1, label: 'Identity' },
+    nuc44: { kind: 'matrix', sMax: 5, label: 'NUC.4.4', rows: NUC44_ROWS, idx: buildIndex('ACGT') },
+    blosum62: { kind: 'matrix', sMax: 11, label: 'BLOSUM62', rows: BLOSUM62_ROWS, idx: buildIndex(AA20) }
+  };
+  SCHEMES.nuc44.idx[85] = 3; /* U 视同 T */
+
+  /* =========================================================================
+     4. 状态
+     ========================================================================= */
+  var state = {
+    raw1: '', raw2: '',
+    seq1: '', seq2: '',
+    curA: '', curB: '',
+    n: 0, m: 0,
+    scores: null,
+    w: 21, scheme: 'identity', mode: 'forward',
+    thr: 0.75, hi: 1, auto: true, cmap: 'grey', grid: true,
+    view: { x0: 0, x1: 1, y0: 0, y1: 1 },
+    viewStack: [],
+    cursor: null, pick: null,
+    timeMs: 0, maxScore: 0, minScore: 0,
+    seg: null, demoInfo: null,
+    pane: 1
+  };
+
+  /* =========================================================================
+     5. 计算
+     ========================================================================= */
+  function effectiveB() {
+    if (state.mode === 'self') return state.seq1;
+    if (state.mode === 'revcomp') return revcomp(state.seq2);
+    return state.seq2;
+  }
+
+  function computeMatrix() {
+    var A = state.seq1;
+    var B = effectiveB();
+    var n = A.length, m = B.length;
+    var w = Math.max(1, Math.min(state.w, Math.min(n, m)));
+    state.curA = A; state.curB = B; state.n = n; state.m = m;
+
+    var scheme = SCHEMES[state.scheme];
+    var sMax = scheme.sMax;
+    var scores = new Float32Array(n * m);
+
+    var ca = new Uint8Array(n), cb = new Uint8Array(m);
+    for (var i = 0; i < n; i++) ca[i] = A.charCodeAt(i) & 255;
+    for (var j = 0; j < m; j++) cb[j] = B.charCodeAt(j) & 255;
+
+    var t0 = performance.now();
+    if (scheme.kind === 'identity') diagonalIdentity(ca, cb, n, m, w, sMax, scores);
+    else diagonalMatrix(ca, cb, n, m, w, sMax, scores, scheme.rows, scheme.idx);
+    state.timeMs = performance.now() - t0;
+    state.scores = scores;
+
+    var mx = 0, mn = 1, stride = Math.max(1, Math.floor(scores.length / 200000));
+    for (var k = 0; k < scores.length; k += stride) {
+      var v = scores[k];
+      if (v > mx) mx = v;
+      if (v < mn) mn = v;
+    }
+    state.maxScore = mx;
+    state.minScore = mn;
+
+    state.view = { x0: 0, x1: m, y0: 0, y1: n };
+    state.viewStack = [];
+    state.pick = null;
+    state.seg = null;
+    updateHi();
+  }
+
+  function diagonalIdentity(ca, cb, n, m, w, sMax, out) {
+    var inv = 1 / sMax;
+    for (var d = -(m - 1); d <= n - 1; d++) {
+      var i0 = d > 0 ? d : 0;
+      var j0 = d < 0 ? -d : 0;
+      var len = Math.min(n - i0, m - j0);
+      var run = 0, row = i0 * m + j0;
+      for (var k = 0; k < len; k++) {
+        run += (ca[i0 + k] === cb[j0 + k]) ? 1 : 0;
+        if (k >= w) run -= (ca[i0 + k - w] === cb[j0 + k - w]) ? 1 : 0;
+        var cnt = k + 1 < w ? k + 1 : w;
+        out[row] = run * inv / cnt;
+        row += m + 1;
+      }
+    }
+  }
+
+  function diagonalMatrix(ca, cb, n, m, w, sMax, out, T, IDX) {
+    var inv = 1 / sMax;
+    for (var d = -(m - 1); d <= n - 1; d++) {
+      var i0 = d > 0 ? d : 0;
+      var j0 = d < 0 ? -d : 0;
+      var len = Math.min(n - i0, m - j0);
+      var run = 0, row = i0 * m + j0;
+      for (var k = 0; k < len; k++) {
+        var ia = IDX[ca[i0 + k]], ib = IDX[cb[j0 + k]];
+        run += (ia < 0 || ib < 0) ? 0 : T[ia][ib];
+        if (k >= w) {
+          var ja = IDX[ca[i0 + k - w]], jb = IDX[cb[j0 + k - w]];
+          run -= (ja < 0 || jb < 0) ? 0 : T[ja][jb];
+        }
+        var cnt = k + 1 < w ? k + 1 : w;
+        out[row] = run * inv / cnt;
+        row += m + 1;
+      }
+    }
+  }
+
+  function updateHi() {
+    var sc = state.scores;
+    if (!sc) { state.hi = 1; return; }
+    if (!state.auto) { syncHi(); return; }
+    var thr = state.thr;
+    var stride = Math.max(1, Math.floor(sc.length / 120000));
+    var arr = [];
+    for (var k = 0; k < sc.length; k += stride) if (sc[k] >= thr) arr.push(sc[k]);
+    if (!arr.length) state.hi = Math.min(1, thr + 0.05);
+    else {
+      arr.sort(function (a, b) { return a - b; });
+      var hi = arr[Math.min(arr.length - 1, Math.floor(arr.length * 0.995))];
+      state.hi = (hi > thr + 0.005) ? Math.min(1, hi) : Math.min(1, thr + 0.05);
+    }
+    syncHi();
+  }
+
+  function syncHi() {
+    var v = Math.round(state.hi * 100);
+    $('rHi').value = String(v);
+    $('vHi').textContent = v + '%';
+  }
+
+  /* =========================================================================
+     6. 几何
+     ========================================================================= */
+  var PAD = { l: 54, r: 14, t: 34, b: 44 };
+  var G = { cssW: 0, cssH: 0, plotX: 0, plotY: 0, plotW: 0, plotH: 0, dpr: 1 };
+
+  var cvBase = $('cvBase'), cvOver = $('cvOver');
+  var ctxBase = cvBase.getContext('2d');
+  var ctxOver = cvOver.getContext('2d');
+
+  function layout() {
+    var card = cvBase.parentNode.parentNode;
+    var availW = Math.max(300, card.clientWidth - 24);
+    var availH = Math.max(300, Math.min(window.innerHeight * 0.72, 860));
+    var box = Math.max(180, Math.min(availW - PAD.l - PAD.r, availH - PAD.t - PAD.b));
+
+    var vbW = (state.view.x1 - state.view.x0) || 1;
+    var vbH = (state.view.y1 - state.view.y0) || 1;
+    var s = Math.min(box / vbW, box / vbH);
+    G.plotW = Math.max(1, Math.round(vbW * s));
+    G.plotH = Math.max(1, Math.round(vbH * s));
+    G.plotX = PAD.l;
+    G.plotY = PAD.t;
+    G.cssW = G.plotW + PAD.l + PAD.r;
+    G.cssH = G.plotH + PAD.t + PAD.b;
+    G.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    [cvBase, cvOver].forEach(function (cv) {
+      cv.style.width = G.cssW + 'px';
+      cv.style.height = G.cssH + 'px';
+      cv.width = Math.round(G.cssW * G.dpr);
+      cv.height = Math.round(G.cssH * G.dpr);
+    });
+  }
+
+  function seqToPx(i, j) {
+    var v = state.view;
+    return {
+      x: G.plotX + (j - v.x0) / (v.x1 - v.x0) * G.plotW,
+      y: G.plotY + (i - v.y0) / (v.y1 - v.y0) * G.plotH
+    };
+  }
+  function pxToSeq(x, y) {
+    var v = state.view;
+    var u = (x - G.plotX) / G.plotW, q = (y - G.plotY) / G.plotH;
+    if (u < -0.002 || u > 1.002 || q < -0.002 || q > 1.002) return null;
+    return { j: v.x0 + u * (v.x1 - v.x0), i: v.y0 + q * (v.y1 - v.y0) };
+  }
+
+  /* =========================================================================
+     7. 主图
+     ========================================================================= */
+  function renderBase() {
+    layout();
+    var dpr = G.dpr;
+    ctxBase.setTransform(1, 0, 0, 1, 0, 0);
+    ctxBase.clearRect(0, 0, cvBase.width, cvBase.height);
+    ctxBase.fillStyle = '#ffffff';
+    ctxBase.fillRect(0, 0, cvBase.width, cvBase.height);
+    if (!state.scores) { clearOverlay(); renderMini(); return; }
+
+    var pw = Math.round(G.plotW * dpr), ph = Math.round(G.plotH * dpr);
+    if (pw < 1 || ph < 1) return;
+
+    var img = ctxBase.createImageData(pw, ph);
+    var data = img.data;
+    var sc = state.scores, m = state.m, n = state.n;
+    var v = state.view, vbW = v.x1 - v.x0, vbH = v.y1 - v.y0;
+    var lut = LUTS[state.cmap];
+    var thr = state.thr, span = Math.max(1e-4, state.hi - thr);
+    var invSpan = 255 / span;
+
+    for (var py = 0; py < ph; py++) {
+      var sy0 = v.y0 + vbH * py / ph, sy1 = v.y0 + vbH * (py + 1) / ph;
+      var iS = Math.floor(sy0), iE = Math.ceil(sy1);
+      if (iE <= iS) iE = iS + 1;
+      if (iS < 0) iS = 0;
+      if (iE > n) iE = n;
+      var rowOff = iS * m;
+
+      for (var px = 0; px < pw; px++) {
+        var sx0 = v.x0 + vbW * px / pw, sx1 = v.x0 + vbW * (px + 1) / pw;
+        var jS = Math.floor(sx0), jE = Math.ceil(sx1);
+        if (jE <= jS) jE = jS + 1;
+        if (jS < 0) jS = 0;
+        if (jE > m) jE = m;
+
+        var best = -1;
+        if (iE - iS === 1 && jE - jS === 1) best = sc[rowOff + jS];
+        else {
+          for (var ii = iS; ii < iE; ii++) {
+            var base = ii * m;
+            for (var jj = jS; jj < jE; jj++) {
+              var val = sc[base + jj];
+              if (val > best) best = val;
+            }
+          }
+        }
+
+        var o = (py * pw + px) * 4;
+        if (best < thr) { data[o] = 247; data[o + 1] = 247; data[o + 2] = 247; data[o + 3] = 255; }
+        else {
+          var idx = Math.round((best - thr) * invSpan) * 3;
+          if (idx < 0) idx = 0;
+          if (idx > 765) idx = 765;
+          data[o] = lut[idx]; data[o + 1] = lut[idx + 1]; data[o + 2] = lut[idx + 2]; data[o + 3] = 255;
+        }
+      }
+    }
+    ctxBase.putImageData(img, Math.round(G.plotX * dpr), Math.round(G.plotY * dpr));
+    drawAxes();
+    renderOverlay();
+    renderMini();
+    updateCaption();
+  }
+
+  function drawAxes() {
+    var dpr = G.dpr;
+    ctxBase.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var v = state.view;
+    var x0 = G.plotX, y0 = G.plotY, w = G.plotW, h = G.plotH;
+
+    ctxBase.strokeStyle = '#bdbdbd';
+    ctxBase.lineWidth = 1;
+    ctxBase.strokeRect(x0 + .5, y0 + .5, w - 1, h - 1);
+
+    var stepX = niceStep(v.x1 - v.x0, 6), stepY = niceStep(v.y1 - v.y0, 6);
+    ctxBase.font = '10.5px "Roboto Mono", Consolas, monospace';
+    ctxBase.fillStyle = '#757575';
+
+    ctxBase.textAlign = 'center';
+    ctxBase.textBaseline = 'top';
+    for (var vx = Math.ceil(v.x0 / stepX) * stepX; vx <= v.x1 + 1e-9; vx += stepX) {
+      var px = x0 + (vx - v.x0) / (v.x1 - v.x0) * w;
+      if (state.grid) {
+        ctxBase.strokeStyle = 'rgba(0,0,0,.045)';
+        ctxBase.beginPath();
+        ctxBase.moveTo(Math.round(px) + .5, y0);
+        ctxBase.lineTo(Math.round(px) + .5, y0 + h);
+        ctxBase.stroke();
+      }
+      ctxBase.strokeStyle = '#bdbdbd';
+      ctxBase.beginPath();
+      ctxBase.moveTo(Math.round(px) + .5, y0 + h);
+      ctxBase.lineTo(Math.round(px) + .5, y0 + h + 6);
+      ctxBase.stroke();
+      ctxBase.fillText(String(Math.round(vx)), px, y0 + h + 9);
+    }
+
+    ctxBase.textAlign = 'right';
+    ctxBase.textBaseline = 'middle';
+    for (var vy = Math.ceil(v.y0 / stepY) * stepY; vy <= v.y1 + 1e-9; vy += stepY) {
+      var py = y0 + (vy - v.y0) / (v.y1 - v.y0) * h;
+      if (state.grid) {
+        ctxBase.strokeStyle = 'rgba(0,0,0,.045)';
+        ctxBase.beginPath();
+        ctxBase.moveTo(x0, Math.round(py) + .5);
+        ctxBase.lineTo(x0 + w, Math.round(py) + .5);
+        ctxBase.stroke();
+      }
+      ctxBase.strokeStyle = '#bdbdbd';
+      ctxBase.beginPath();
+      ctxBase.moveTo(x0 - 6, Math.round(py) + .5);
+      ctxBase.lineTo(x0, Math.round(py) + .5);
+      ctxBase.stroke();
+      ctxBase.fillText(String(Math.round(vy)), x0 - 9, py);
+    }
+
+    ctxBase.fillStyle = '#424242';
+    ctxBase.font = '500 11px "Roboto Mono", Consolas, monospace';
+    ctxBase.textAlign = 'center';
+    ctxBase.textBaseline = 'bottom';
+    ctxBase.fillText('B →', x0 + w / 2, y0 - 8);
+    ctxBase.save();
+    ctxBase.translate(12, y0 + h / 2);
+    ctxBase.rotate(-Math.PI / 2);
+    ctxBase.textBaseline = 'top';
+    ctxBase.fillText('A →', 0, 0);
+    ctxBase.restore();
+  }
+
+  function niceStep(span, target) {
+    if (!isFinite(span) || span <= 0) return 1;
+    var raw = span / target;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    var mult = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    return mult * mag;
+  }
+
+  function clearOverlay() {
+    ctxOver.setTransform(1, 0, 0, 1, 0, 0);
+    ctxOver.clearRect(0, 0, cvOver.width, cvOver.height);
+  }
+
+  function renderOverlay() {
+    clearOverlay();
+    if (!state.scores) return;
+    ctxOver.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+    ctxOver.save();
+    ctxOver.beginPath();
+    ctxOver.rect(G.plotX, G.plotY, G.plotW, G.plotH);
+    ctxOver.clip();
+
+    if (state.cursor) {
+      var p = seqToPx(state.cursor.i + 0.5, state.cursor.j + 0.5);
+      ctxOver.strokeStyle = 'rgba(63,81,181,.5)';
+      ctxOver.setLineDash([3, 3]);
+      ctxOver.lineWidth = 1;
+      ctxOver.beginPath();
+      ctxOver.moveTo(G.plotX, p.y);
+      ctxOver.lineTo(G.plotX + G.plotW, p.y);
+      ctxOver.moveTo(p.x, G.plotY);
+      ctxOver.lineTo(p.x, G.plotY + G.plotH);
+      ctxOver.stroke();
+      ctxOver.setLineDash([]);
+    }
+
+    if (state.pick) {
+      var q = seqToPx(state.pick.i + 0.5, state.pick.j + 0.5);
+      ctxOver.strokeStyle = '#d32f2f';
+      ctxOver.lineWidth = 1.4;
+      ctxOver.beginPath();
+      ctxOver.arc(q.x, q.y, 5, 0, Math.PI * 2);
+      ctxOver.stroke();
+      ctxOver.beginPath();
+      ctxOver.arc(q.x, q.y, 1.5, 0, Math.PI * 2);
+      ctxOver.fillStyle = '#d32f2f';
+      ctxOver.fill();
+    }
+    ctxOver.restore();
+  }
+
+  /* =========================================================================
+     8. 缩略图
+     ========================================================================= */
+  function renderMini() {
+    var cv = $('cvMini');
+    var box = Math.round(cv.clientWidth || 240);
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(box * dpr);
+    cv.height = Math.round(box * dpr);
+    cv.style.height = box + 'px';
+    var c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = '#fafafa';
+    c.fillRect(0, 0, box, box);
+
+    if (!state.scores) {
+      c.strokeStyle = '#e0e0e0';
+      c.strokeRect(.5, .5, box - 1, box - 1);
+      $('miniInfo').textContent = '';
+      return;
+    }
+
+    var n = state.n, m = state.m;
+    var s = Math.min(box / m, box / n);
+    var w = Math.max(1, m * s), h = Math.max(1, n * s);
+    var ox = (box - w) / 2, oy = (box - h) / 2;
+    var pw = Math.max(1, Math.round(w)), ph = Math.max(1, Math.round(h));
+    var img = c.createImageData(pw, ph);
+    var data = img.data;
+    var sc = state.scores, thr = state.thr, invSpan = 255 / Math.max(1e-4, state.hi - thr);
+    var lut = LUTS[state.cmap];
+
+    for (var py = 0; py < ph; py++) {
+      var iS = Math.floor(py / ph * n), iE = Math.max(iS + 1, Math.ceil((py + 1) / ph * n));
+      for (var px = 0; px < pw; px++) {
+        var jS = Math.floor(px / pw * m), jE = Math.max(jS + 1, Math.ceil((px + 1) / pw * m));
+        var best = -1;
+        for (var ii = iS; ii < iE && ii < n; ii++) {
+          var base = ii * m;
+          for (var jj = jS; jj < jE && jj < m; jj++) {
+            var val = sc[base + jj];
+            if (val > best) best = val;
+          }
+        }
+        var o = (py * pw + px) * 4;
+        if (best < thr) { data[o] = 250; data[o + 1] = 250; data[o + 2] = 250; data[o + 3] = 255; }
+        else {
+          var idx = Math.round((best - thr) * invSpan) * 3;
+          if (idx < 0) idx = 0;
+          if (idx > 765) idx = 765;
+          data[o] = lut[idx]; data[o + 1] = lut[idx + 1]; data[o + 2] = lut[idx + 2]; data[o + 3] = 255;
+        }
+      }
+    }
+    c.putImageData(img, Math.round(ox), Math.round(oy));
+
+    var v = state.view;
+    var rx = ox + v.x0 / m * w, ry = oy + v.y0 / n * h;
+    var rw = Math.max(2, (v.x1 - v.x0) / m * w), rh = Math.max(2, (v.y1 - v.y0) / n * h);
+    c.strokeStyle = '#d32f2f';
+    c.lineWidth = 1.5;
+    c.strokeRect(rx + .5, ry + .5, rw, rh);
+
+    $('miniInfo').textContent = state.n + '×' + state.m;
+  }
+
+  /* =========================================================================
+     9. 分布
+     ========================================================================= */
+  function renderHist() {
+    var cv = $('cvHist');
+    var cssW = cv.clientWidth || 240, H = 92;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(H * dpr);
+    cv.style.height = H + 'px';
+    var c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, cssW, H);
+
+    if (!state.scores) {
+      $('histInfo').textContent = '';
+      $('histMin').textContent = '';
+      $('histMax').textContent = '';
+      return;
+    }
+
+    var BINS = 64, sc = state.scores;
+    var stride = Math.max(1, Math.floor(sc.length / 300000));
+    var hist = new Int32Array(BINS);
+    var mn = 1, mx = 0, cnt = 0;
+    for (var k = 0; k < sc.length; k += stride) {
+      var v = sc[k];
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+      cnt++;
+    }
+    if (mx <= mn) mx = mn + 1e-3;
+    var span = mx - mn;
+    for (var k2 = 0; k2 < sc.length; k2 += stride) {
+      var b = Math.floor((sc[k2] - mn) / span * BINS);
+      if (b < 0) b = 0;
+      if (b >= BINS) b = BINS - 1;
+      hist[b]++;
+    }
+    var hmax = 1;
+    for (var i = 0; i < BINS; i++) if (hist[i] > hmax) hmax = hist[i];
+
+    var baseY = H - 4, top = 6, bw = cssW / BINS, logH = Math.log(hmax + 1);
+    for (var i2 = 0; i2 < BINS; i2++) {
+      if (!hist[i2]) continue;
+      var hh = Math.max(1, Math.log(hist[i2] + 1) / logH * (baseY - top));
+      var v0 = mn + span * i2 / BINS;
+      c.fillStyle = (v0 >= state.thr) ? '#5f71cc' : '#dcdfeb';
+      c.fillRect(i2 * bw, baseY - hh, Math.max(1, bw - 0.5), hh);
+    }
+
+    var tx = (state.thr - mn) / span * cssW;
+    if (tx >= 0 && tx <= cssW) {
+      c.strokeStyle = '#d32f2f';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(tx + .5, top - 2);
+      c.lineTo(tx + .5, baseY);
+      c.stroke();
+    }
+    c.strokeStyle = '#e0e0e0';
+    c.beginPath();
+    c.moveTo(0, baseY + .5);
+    c.lineTo(cssW, baseY + .5);
+    c.stroke();
+
+    $('histInfo').textContent = 'n ' + fmtInt(cnt);
+    $('histMin').textContent = mn.toFixed(2);
+    $('histMax').textContent = mx.toFixed(2);
+  }
+
+  /* =========================================================================
+     10. 交互
+     ========================================================================= */
+  function currentPick(i, j) {
+    i = clamp(Math.round(i), 0, state.n - 1);
+    j = clamp(Math.round(j), 0, state.m - 1);
+    state.pick = { i: i, j: j };
+    state.cursor = { i: i, j: j };
+    showSegment(i, j);
+    updateCaption();
+    renderOverlay();
+  }
+
+  function showSegment(i, j) {
+    var w = Math.min(state.w, state.n, state.m);
+    var i1 = Math.min(state.n - 1, i), i0 = Math.max(0, i1 - w + 1);
+    var j1 = Math.min(state.m - 1, j), j0 = Math.max(0, j1 - w + 1);
+    var len = Math.min(i1 - i0, j1 - j0) + 1;
+    var sa = state.curA.slice(i0, i0 + len);
+    var sb = state.curB.slice(j0, j0 + len);
+    var ha = '', hb = '', hm = '', same = 0;
+    for (var k = 0; k < len; k++) {
+      var eq = sa[k] === sb[k];
+      if (eq) same++;
+      ha += eq ? sa[k] : '<span class="x">' + sa[k] + '</span>';
+      hb += eq ? sb[k] : '<span class="x">' + sb[k] + '</span>';
+      hm += eq ? '|' : ' ';
+    }
+    $('segA').innerHTML = ha;
+    $('segB').innerHTML = hb;
+    $('segM').textContent = hm;
+    $('inspEmpty').hidden = true;
+    $('inspBody').hidden = false;
+    $('btnCopySeg').style.display = 'inline-flex';
+
+    $('inspCoord').textContent = '1:' + fmtInt(i0 + 1) + '–' + fmtInt(i0 + len) +
+      '  ·  2:' + fmtInt(j0 + 1) + '–' + fmtInt(j0 + len);
+
+    var score = state.scores[i * state.m + j];
+    $('segNote').innerHTML = t('insp.identity') + ' <b>' + pct(same / len, 1) + '</b>' +
+      ' · score <b>' + score.toFixed(3) + '</b> · w <b>' + len + '</b>';
+
+    state.seg = { i0: i0, i1: i0 + len, j0: j0, j1: j0 + len, sa: sa, sb: sb, ident: same / len };
+  }
+
+  function updateCaption() {
+    var el = $('caption');
+    if (!state.scores) { el.textContent = ''; return; }
+    var v = state.view;
+    var vn = Math.max(1, Math.round(v.y1 - v.y0));
+    var vm = Math.max(1, Math.round(v.x1 - v.x0));
+    var mode = t('cap.mode.' + (state.mode || 'forward'));
+    if (state.cursor) {
+      var c = state.cursor;
+      var s = state.scores[c.i * state.m + c.j];
+      el.textContent = t('caption.tpl', {
+        n: fmtInt(vn), m: fmtInt(vm),
+        i: fmtInt(c.i + 1), j: fmtInt(c.j + 1), s: s.toFixed(3), mode: mode
+      });
+    } else {
+      el.textContent = t('caption.none', {
+        n: fmtInt(vn), m: fmtInt(vm),
+        w: state.w, scheme: SCHEMES[state.scheme].label, mode: mode
+      });
+    }
+  }
+
+  function stageExtras() {
+    if (!state.scores) {
+      $('sideStats').innerHTML = '';
+      $('matrixStats').textContent = '';
+      return;
+    }
+    var cells = state.n * state.m;
+    $('sideStats').innerHTML =
+      '<span>' + t('stat.matrix') + ' <b>' + state.n + ' × ' + state.m + '</b></span><br>' +
+      '<span><b>' + fmtInt(cells) + '</b> ' + t('stat.cells') + '</span><br>' +
+      '<span>' + t('stat.time') + ' <b>' + state.timeMs.toFixed(0) + ' ms</b></span><br>' +
+      '<span>' + t('stat.max') + ' <b>' + state.maxScore.toFixed(3) + '</b></span>';
+    $('matrixStats').textContent = state.n + ' × ' + state.m + ' · ' + fmtInt(cells) + ' ' +
+      t('stat.cells') + ' · ' + state.timeMs.toFixed(0) + ' ms';
+    updateCaption();
+    updatePanSliders();
+  }
+
+  function updatePanSliders() {
+    if (!state.scores) {
+      $('panX').disabled = true; $('panY').disabled = true;
+      $('panX').max = 0; $('panY').max = 0;
+      $('panInfo').textContent = '';
+      return;
+    }
+    var v = state.view;
+    var maxX = Math.max(0, Math.floor(state.m - (v.x1 - v.x0)));
+    var maxY = Math.max(0, Math.floor(state.n - (v.y1 - v.y0)));
+    $('panX').max = maxX; $('panX').value = String(Math.round(v.x0)); $('panX').disabled = maxX <= 0;
+    $('panY').max = maxY; $('panY').value = String(Math.round(v.y0)); $('panY').disabled = maxY <= 0;
+    $('btnZoomOut').disabled = state.viewStack.length === 0;
+    $('panInfo').textContent = 'A ' + fmtInt(Math.round(v.y0) + 1) + '–' + fmtInt(Math.round(v.y1)) +
+      ' · B ' + fmtInt(Math.round(v.x0) + 1) + '–' + fmtInt(Math.round(v.x1));
+  }
+
+  cvOver.addEventListener('pointerdown', function (e) {
+    if (!state.scores) return;
+    var r = cvOver.getBoundingClientRect();
+    var q = pxToSeq(e.clientX - r.left, e.clientY - r.top);
+    if (q) currentPick(Math.floor(q.i), Math.floor(q.j));
+  });
+
+  cvOver.addEventListener('pointermove', function (e) {
+    if (!state.scores) return;
+    var r = cvOver.getBoundingClientRect();
+    var q = pxToSeq(e.clientX - r.left, e.clientY - r.top);
+    if (!q) { state.cursor = null; updateCaption(); clearOverlay(); return; }
+    state.cursor = { i: clamp(Math.floor(q.i), 0, state.n - 1), j: clamp(Math.floor(q.j), 0, state.m - 1) };
+    updateCaption();
+    renderOverlay();
+  });
+
+  cvOver.addEventListener('pointerleave', function () {
+    state.cursor = null;
+    updateCaption();
+    clearOverlay();
+  });
+
+  cvOver.addEventListener('dblclick', resetView);
+
+  function pushView() {
+    state.viewStack.push({
+      x0: state.view.x0, x1: state.view.x1, y0: state.view.y0, y1: state.view.y1
+    });
+  }
+
+  function resetView() {
+    if (!state.scores) return;
+    state.view = { x0: 0, x1: state.m, y0: 0, y1: state.n };
+    state.viewStack = [];
+    state.cursor = null;
+    renderBase();
+    updatePanSliders();
+  }
+
+  function zoom(factor) {
+    if (!state.scores) return;
+    var v = state.view;
+    var cw = (v.x0 + v.x1) / 2, ch = (v.y0 + v.y1) / 2;
+    var hw = (v.x1 - v.x0) / 2 * factor, hh = (v.y1 - v.y0) / 2 * factor;
+    pushView();
+    state.view = {
+      x0: clamp(cw - hw, 0, state.m), x1: clamp(cw + hw, 0, state.m),
+      y0: clamp(ch - hh, 0, state.n), y1: clamp(ch + hh, 0, state.n)
+    };
+    state.cursor = null;
+    renderBase();
+    updatePanSliders();
+  }
+
+  function zoomOut() {
+    if (!state.viewStack.length) return;
+    state.view = state.viewStack.pop();
+    state.cursor = null;
+    renderBase();
+    updatePanSliders();
+  }
+
+  $('cvMini').addEventListener('pointerdown', function (e) {
+    if (!state.scores) return;
+    var v = state.view;
+    if ((v.x1 - v.x0) >= state.m - 0.5 && (v.y1 - v.y0) >= state.n - 0.5) return;
+    var r = this.getBoundingClientRect();
+    var box = r.width, n = state.n, m = state.m;
+    var s = Math.min(box / m, box / n);
+    var w = m * s, h = n * s;
+    var ox = (box - w) / 2, oy = (box - h) / 2;
+    var j = clamp((e.clientX - r.left - ox) / w, 0, 1) * m;
+    var i = clamp((e.clientY - r.top - oy) / h, 0, 1) * n;
+    var hw2 = (v.x1 - v.x0) / 2, hh2 = (v.y1 - v.y0) / 2;
+    var x0 = clamp(j - hw2, 0, Math.max(0, m - 2 * hw2));
+    var y0 = clamp(i - hh2, 0, Math.max(0, n - 2 * hh2));
+    pushView();
+    state.view = { x0: x0, x1: x0 + 2 * hw2, y0: y0, y1: y0 + 2 * hh2 };
+    state.cursor = null;
+    renderBase();
+    updatePanSliders();
+  });
+
+  $('panX').addEventListener('input', function () {
+    var v = state.view, span = v.x1 - v.x0;
+    v.x0 = +this.value; v.x1 = Math.min(state.m, v.x0 + span);
+    state.cursor = null;
+    renderBase();
+    updatePanSliders();
+  });
+  $('panY').addEventListener('input', function () {
+    var v = state.view, span = v.y1 - v.y0;
+    v.y0 = +this.value; v.y1 = Math.min(state.n, v.y0 + span);
+    state.cursor = null;
+    renderBase();
+    updatePanSliders();
+  });
+
+  /* =========================================================================
+     11. 动作
+     ========================================================================= */
+  function toast(msg) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.remove('on'); }, 1900);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(t('toast.copied')); },
+        function () { legacyCopy(text); });
+    } else legacyCopy(text);
+  }
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast(t('toast.copied')); }
+    catch (err) { toast(t('toast.copyFail')); }
+    document.body.removeChild(ta);
+  }
+
+  function setPane(n) {
+    state.pane = n;
+    document.querySelectorAll('.tab').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-pane') === String(n));
+    });
+    $('pane1').hidden = n !== 1;
+    $('pane2').hidden = n !== 2;
+    $('paneP').hidden = n !== 'p';
+    $('panel').hidden = false;
+    if (n === 1) $('editArea').value = state.raw1;
+    if (n === 2) $('editArea2').value = state.raw2;
+    updateMeta();
+  }
+
+  function togglePane(n) {
+    if (String(state.pane) === String(n) && !$('panel').hidden) { $('panel').hidden = true; return; }
+    setPane(n);
+  }
+
+  function updateMeta() {
+    [{ raw: state.raw1, el: $('meta1'), tab: $('tabLen1') },
+     { raw: state.raw2, el: $('meta2'), tab: $('tabLen2') }].forEach(function (p) {
+      var seq = parseSeq(p.raw);
+      if (!seq) {
+        p.el.innerHTML = '<span>' + t('meta.empty') + '</span>';
+        p.tab.textContent = '—';
+        return;
+      }
+      var info = classify(seq);
+      var isNuc = (info.type === 'dna' || info.type === 'rna');
+      var unit = isNuc ? 'bp' : 'aa';
+      var parts = ['<span>' + t('meta.len') + ' <b>' + fmtInt(seq.length) + ' ' + unit + '</b></span>',
+                   '<span>' + t('type.' + info.type) + '</span>'];
+      if (isNuc) parts.push('<span>' + t('meta.gc') + ' <b>' + pct(gcContent(seq), 1) + '</b></span>');
+      if (info.validFrac < 0.999) {
+        parts.push('<span class="warn">' + t('meta.unknown') + ' ' +
+          Math.round((1 - info.validFrac) * seq.length) + '</span>');
+      }
+      p.el.innerHTML = parts.join('');
+      p.tab.textContent = fmtInt(seq.length) + ' ' + unit;
+    });
+  }
+
+  function plot(showErrors) {
+    state.raw1 = $('editArea').value;
+    state.raw2 = $('editArea2').value;
+    state.seq1 = parseSeq(state.raw1);
+    state.seq2 = parseSeq(state.raw2);
+    updateMeta();
+
+    var A = state.seq1, B = state.seq2;
+    if (!A.length) { if (showErrors) { setPane(1); toast(t('err.emptyA')); } return false; }
+    if (state.mode !== 'self' && !B.length) { if (showErrors) { setPane(2); toast(t('err.emptyB')); } return false; }
+    if (A.length < 3 || (state.mode !== 'self' && B.length < 3)) {
+      if (showErrors) toast(t('err.short'));
+      return false;
+    }
+    if (state.mode === 'revcomp' &&
+        (classify(A).type === 'protein' || classify(B).type === 'protein')) {
+      if (showErrors) toast(t('err.rcProtein'));
+      return false;
+    }
+
+    var effB = state.mode === 'self' ? A : (state.mode === 'revcomp' ? revcomp(B) : B);
+    var cells = A.length * effB.length;
+    if (cells > MAX_CELLS) {
+      toast(t('err.tooBig', {
+        n: fmtInt(A.length), m: fmtInt(effB.length),
+        cells: fmtInt(cells), max: fmtInt(MAX_CELLS)
+      }));
+      return false;
+    }
+
+    computeMatrix();
+    $('emptyState').style.display = 'none';
+    renderBase();
+    renderHist();
+    stageExtras();
+    persist();
+    return true;
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildDemo() {
+    var rnd = mulberry32(20261018);
+    var bases = 'ACGT';
+    function rndSeq(L) {
+      var out = [];
+      for (var i = 0; i < L; i++) out.push(bases[Math.floor(rnd() * 4)]);
+      return out.join('');
+    }
+    var A = rndSeq(1200);
+    var irSrc = A.slice(150, 290);
+    A = A.slice(0, 300) + revcomp(irSrc) + A.slice(300);
+
+    var ch = A.split('');
+    for (var i = 0; i < ch.length; i++) if (rnd() < 0.05) ch[i] = bases[Math.floor(rnd() * 4)];
+    var B = ch;
+
+    function insertAt(arr, pos, str) {
+      arr.splice.apply(arr, [pos, 0].concat(str.split('')));
+    }
+    insertAt(B, 1300, revcomp(A.slice(800, 940)));
+    insertAt(B, 1100, A.slice(900, 1100));
+    insertAt(B, 700, rndSeq(150));
+    B.splice(400, 40);
+    return { A: A, B: B.join('') };
+  }
+
+  function loadDemo() {
+    var d = buildDemo();
+    state.raw1 = d.A;
+    state.raw2 = d.B;
+    $('editArea').value = d.A;
+    $('editArea2').value = d.B;
+
+    $('selScheme').value = 'identity';
+    $('selMode').value = 'forward';
+    $('numWindow').value = '25';
+    $('rThreshold').value = '85';
+    state.scheme = 'identity';
+    state.mode = 'forward';
+    state.w = 25;
+    state.thr = 0.85;
+    state.auto = true;
+    $('chkAuto').checked = true;
+
+    state.demoInfo = { n: d.A.length, m: d.B.length };
+    $('demoNote').hidden = false;
+    $('demoText').textContent = t('demo.note', { n: fmtInt(d.A.length), m: fmtInt(d.B.length) });
+    plot(true);
+  }
+
+  function clearAll() {
+    state.raw1 = ''; state.raw2 = '';
+    $('editArea').value = ''; $('editArea2').value = '';
+    state.scores = null; state.seg = null; state.pick = null; state.cursor = null;
+    state.demoInfo = null;
+    $('demoNote').hidden = true;
+    $('emptyState').style.display = 'flex';
+    $('inspBody').hidden = true;
+    $('inspEmpty').hidden = false;
+    $('btnCopySeg').style.display = 'none';
+    $('inspCoord').textContent = '';
+    $('caption').textContent = '';
+    $('sideStats').innerHTML = '';
+    $('matrixStats').textContent = '';
+    $('miniInfo').textContent = '';
+    $('histInfo').textContent = '';
+    $('histMin').textContent = '';
+    $('histMax').textContent = '';
+    updateMeta();
+    layout();
+    clearOverlay();
+    renderMini();
+    renderHist();
+    updatePanSliders();
+    persist();
+  }
+
+  function exportPng() {
+    if (!state.scores) { toast(t('toast.noPlot')); return; }
+    cvBase.toBlob(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'dotlet_' + state.n + 'x' + state.m + '_w' + state.w + '.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    }, 'image/png');
+  }
+
+  function exportCsv() {
+    if (!state.scores) { toast(t('toast.noPlot')); return; }
+    var n = state.n, m = state.m;
+    if (n * m > 1000000) {
+      toast(t('err.tooBig', { n: fmtInt(n), m: fmtInt(m), cells: fmtInt(n * m), max: fmtInt(1000000) }));
+      return;
+    }
+    var lines = [], head = ['i\\j'];
+    for (var j = 0; j < m; j++) head.push(j + 1);
+    lines.push(head.join(','));
+    for (var i = 0; i < n; i++) {
+      var row = [i + 1], off = i * m;
+      for (var k = 0; k < m; k++) row.push(state.scores[off + k].toFixed(4));
+      lines.push(row.join(','));
+    }
+    var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dotlet_matrix_' + n + 'x' + m + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+
+  function copyCaption() {
+    if (!state.scores) { toast(t('toast.noPlot')); return; }
+    var isNuc = classify(state.curA).type !== 'protein';
+    var unit = isNuc ? 'bp' : 'aa';
+    var extra = state.mode === 'self' ? '; self-comparison'
+      : (state.mode === 'revcomp' ? '; B is the reverse complement' : '');
+    var text = LANG === 'zh'
+      ? '点阵图：序列 1（' + fmtInt(state.n) + ' ' + unit + '）与序列 2（' + fmtInt(state.m) + ' ' + unit +
+        '）的滑动窗口比较。窗口大小 ' + state.w + ' ' + unit + '，打分方案 ' + SCHEMES[state.scheme].label +
+        '，显示阈值 ' + Math.round(state.thr * 100) + '%' + extra + '。'
+      : 'Dot plot of sequence 1 (' + fmtInt(state.n) + ' ' + unit + ') against sequence 2 (' +
+        fmtInt(state.m) + ' ' + unit + '). Sliding window ' + state.w + ' ' + unit + ', ' +
+        SCHEMES[state.scheme].label + ' scoring, display threshold ' +
+        Math.round(state.thr * 100) + '%' + extra + '.';
+    copyText(text);
+  }
+
+  function copySegments() {
+    if (!state.seg) return;
+    var s = state.seg;
+    copyText('>seq1 ' + (s.i0 + 1) + '-' + s.i1 + '\n' + s.sa + '\n>seq2 ' + (s.j0 + 1) + '-' + s.j1 + '\n' + s.sb);
+  }
+
+  /* =========================================================================
+     12. 持久化 / 语言
+     ========================================================================= */
+  function syncLabels() {
+    $('numWindow').value = String(state.w);
+    $('rThreshold').value = String(Math.round(state.thr * 100));
+    $('vThr').textContent = Math.round(state.thr * 100) + '%';
+    syncHi();
+  }
+
+  var computeTimer = null;
+  function scheduleCompute() {
+    clearTimeout(computeTimer);
+    computeTimer = setTimeout(function () { if (state.seq1.length) plot(false); }, 320);
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem('dotlet.v2', JSON.stringify({
+        a: state.raw1, b: state.raw2,
+        w: state.w, scheme: state.scheme, mode: state.mode,
+        thr: state.thr, cmap: state.cmap, auto: state.auto, lang: LANG
+      }));
+    } catch (e) {}
+  }
+
+  function restore() {
+    var raw = null;
+    try { raw = localStorage.getItem('dotlet.v2'); } catch (e) { raw = null; }
+    if (!raw) return false;
+    var d;
+    try { d = JSON.parse(raw); } catch (e) { return false; }
+    if (d.lang === 'en' || d.lang === 'zh') LANG = d.lang;
+    if (typeof d.a === 'string') { state.raw1 = d.a; $('editArea').value = d.a; }
+    if (typeof d.b === 'string') { state.raw2 = d.b; $('editArea2').value = d.b; }
+    if (d.w) state.w = clamp(+d.w, 3, 201);
+    if (d.scheme && SCHEMES[d.scheme]) { state.scheme = d.scheme; $('selScheme').value = d.scheme; }
+    if (d.mode) { state.mode = d.mode; $('selMode').value = d.mode; }
+    if (typeof d.thr === 'number') state.thr = clamp(d.thr, 0, 0.99);
+    if (d.cmap && LUTS[d.cmap]) { state.cmap = d.cmap; $('selCmap').value = d.cmap; }
+    if (typeof d.auto === 'boolean') { state.auto = d.auto; $('chkAuto').checked = d.auto; }
+    syncLabels();
+    return true;
+  }
+
+  function applyLang() {
+    document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-CN';
+    document.title = LANG === 'en' ? 'dotlet · Sequence Dot Plot' : 'dotlet · 序列点阵图';
+
+    var i, nodes;
+    nodes = document.querySelectorAll('[data-i18n]');
+    for (i = 0; i < nodes.length; i++) nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+
+    nodes = document.querySelectorAll('[data-i18n-ph]');
+    for (i = 0; i < nodes.length; i++) nodes[i].setAttribute('placeholder', t(nodes[i].getAttribute('data-i18n-ph')));
+
+    nodes = document.querySelectorAll('[data-i18n-html]');
+    for (i = 0; i < nodes.length; i++) nodes[i].innerHTML = t(nodes[i].getAttribute('data-i18n-html'));
+
+    nodes = document.querySelectorAll('[data-i18n-title]');
+    for (i = 0; i < nodes.length; i++) nodes[i].setAttribute('title', t(nodes[i].getAttribute('data-i18n-title')));
+
+    $('btnZh').classList.toggle('on', LANG === 'zh');
+    $('btnEn').classList.toggle('on', LANG === 'en');
+
+    if (state.demoInfo) {
+      $('demoText').textContent = t('demo.note', { n: fmtInt(state.demoInfo.n), m: fmtInt(state.demoInfo.m) });
+    }
+    updateMeta();
+    if (state.scores) { stageExtras(); renderBase(); renderHist(); }
+  }
+
+  /* =========================================================================
+     13. 事件
+     ========================================================================= */
+  document.querySelectorAll('.tab').forEach(function (btn) {
+    btn.addEventListener('click', function () { togglePane(btn.getAttribute('data-pane')); });
+  });
+
+  $('editArea').addEventListener('input', function () {
+    state.raw1 = this.value; updateMeta(); persist();
+  });
+  $('editArea2').addEventListener('input', function () {
+    state.raw2 = this.value; updateMeta(); persist();
+  });
+
+  $('numWindow').addEventListener('change', function () {
+    var v = parseInt(this.value, 10);
+    if (isNaN(v)) { this.value = String(state.w); return; }
+    v = clamp(v, 3, 201);
+    if (v % 2 === 0) v -= 1;
+    state.w = v;
+    this.value = String(v);
+    scheduleCompute();
+    persist();
+  });
+
+  $('selScheme').addEventListener('change', function () {
+    state.scheme = this.value;
+    if (state.scores) plot(false);
+    persist();
+  });
+
+  $('selMode').addEventListener('change', function () {
+    state.mode = this.value;
+    if (state.scores) plot(false);
+    persist();
+  });
+
+  $('selCmap').addEventListener('change', function () {
+    state.cmap = this.value;
+    if (state.scores) { renderBase(); renderHist(); }
+    persist();
+  });
+
+  $('chkAuto').addEventListener('change', function () {
+    state.auto = this.checked;
+    if (state.scores) { updateHi(); renderBase(); renderHist(); }
+    persist();
+  });
+
+  $('chkGrid').addEventListener('change', function () {
+    state.grid = this.checked;
+    if (state.scores) renderBase();
+  });
+
+  $('rThreshold').addEventListener('input', function () {
+    state.thr = (+this.value) / 100;
+    $('vThr').textContent = this.value + '%';
+    if (!state.scores) return;
+    if (state.auto) updateHi();
+    renderBase();
+    renderHist();
+  });
+
+  $('rHi').addEventListener('input', function () {
+    state.hi = (+this.value) / 100;
+    if (state.hi <= state.thr) {
+      state.hi = Math.min(1, state.thr + 0.01);
+      this.value = String(Math.round(state.hi * 100));
+    }
+    $('vHi').textContent = Math.round(state.hi * 100) + '%';
+    state.auto = false;
+    $('chkAuto').checked = false;
+    if (state.scores) renderBase();
+  });
+
+  $('btnPlot').addEventListener('click', function () { plot(true); });
+  $('btnDemo').addEventListener('click', loadDemo);
+  $('btnClear').addEventListener('click', clearAll);
+  $('btnPng').addEventListener('click', exportPng);
+  $('btnCsv').addEventListener('click', exportCsv);
+  $('btnCaption').addEventListener('click', copyCaption);
+  $('btnCopySeg').addEventListener('click', copySegments);
+  $('btnZoomIn').addEventListener('click', function () { zoom(0.5); });
+  $('btnZoomOut').addEventListener('click', zoomOut);
+
+  $('btnCopy1').addEventListener('click', function () {
+    state.raw1 = state.raw2; $('editArea').value = state.raw1; updateMeta(); persist();
+  });
+  $('btnCopy2').addEventListener('click', function () {
+    state.raw2 = state.raw1; $('editArea2').value = state.raw2; updateMeta(); persist();
+  });
+
+  $('btnZh').addEventListener('click', function () { LANG = 'zh'; applyLang(); persist(); });
+  $('btnEn').addEventListener('click', function () { LANG = 'en'; applyLang(); persist(); });
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); plot(true); }
+    else if (e.key === 'Escape') {
+      if (state.viewStack.length) zoomOut(); else resetView();
+    }
+  });
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (state.scores) { renderBase(); renderHist(); }
+      else { layout(); renderMini(); renderHist(); }
+    }, 160);
+  });
+
+  /* =========================================================================
+     14. 启动
+     ========================================================================= */
+  (function init() {
+    var nav = (navigator.language || 'zh').toLowerCase();
+    LANG = nav.indexOf('zh') === 0 ? 'zh' : 'en';
+
+    var qs = (location.search || '').toLowerCase();
+    var restored = restore();
+    if (/[?&]lang=en/.test(qs)) LANG = 'en';
+    else if (/[?&]lang=zh/.test(qs)) LANG = 'zh';
+
+    applyLang();
+    setPane(1);
+    layout();
+    renderMini();
+    renderHist();
+    updatePanSliders();
+
+    if (/[?&]demo=1/.test(qs)) loadDemo();
+    else if (restored && state.raw1.length && state.raw2.length) plot(false);
+    else $('emptyState').style.display = 'flex';
+  })();
+
+})();
+</script>
+</body>
+</html>

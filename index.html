@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioNav · 生物信息学工具导航</title>
+<meta name="description" content="生物信息学常用工具与数据库导航：序列比对、基因组数据库、多组学、蛋白结构、系统发育、单细胞、分子对接与学习资源。">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233f51b5'/%3E%3Cpath d='M22 8c0 14 20 18 20 24s-20 10-20 24M42 8c0 14-20 18-20 24s20 10 20 24' stroke='%23ffffff' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Cline x1='24' y1='19' x2='40' y2='19' stroke='%23c5cae9' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='25' y1='32' x2='39' y2='32' stroke='%23c5cae9' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='24' y1='45' x2='40' y2='45' stroke='%23c5cae9' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --indigo:#3f51b5; --indigo-d:#303f9f; --indigo-l:#e8eaf6; --indigo-2:#5f71cc;
+    --page:#eeeeee; --paper:#ffffff;
+    --line:#e0e0e0; --line-2:#cfcfcf;
+    --ink:#212121; --ink-2:#424242; --muted:#757575; --faint:#9e9e9e;
+    --red:#d32f2f; --amber:#ef6c00; --green:#2e7d32;
+    --sans:"Roboto","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --mono:"Roboto Mono","JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+    --sh1:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+    --sh2:0 3px 6px rgba(0,0,0,.14),0 2px 4px rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--indigo);text-decoration:none}
+  .mono{font-family:var(--mono)}
+
+  header{background:var(--indigo);color:#fff;padding:20px 24px;box-shadow:var(--sh2)}
+  header .wrap{max-width:1080px;margin:0 auto}
+  header h1{margin:0;font-size:20px;font-weight:500;letter-spacing:.5px}
+  header p{margin:4px 0 0;font-size:12.5px;opacity:.85}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+
+  .toolbar{position:sticky;top:0;z-index:10;background:var(--paper);box-shadow:var(--sh1);margin-top:-0px;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .toolbar .inner{max-width:1080px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%}
+  #q{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--line-2);border-radius:3px;font-size:13.5px;font-family:inherit;outline:none}
+  #q:focus{border-color:var(--indigo)}
+  .count{font-size:12px;color:var(--muted);white-space:nowrap}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;padding:14px 0 2px}
+  .chip{padding:5px 12px;border:1px solid var(--line-2);border-radius:16px;background:var(--paper);cursor:pointer;font-size:12.5px;color:var(--ink-2);user-select:none}
+  .chip:hover{border-color:var(--indigo);color:var(--indigo)}
+  .chip.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+
+  main{padding:8px 0 48px}
+  section.cat{margin-top:22px}
+  section.cat h2{font-size:14px;font-weight:600;margin:0 0 4px;display:flex;align-items:baseline;gap:8px}
+  section.cat h2 .no{color:var(--indigo);font-family:var(--mono);font-size:12px}
+  section.cat .desc{font-size:12px;color:var(--muted);margin:0 0 10px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .card{display:block;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:12px 14px;box-shadow:var(--sh1);transition:box-shadow .15s,border-color .15s}
+  a.card:hover{text-decoration:none;border-color:var(--indigo);box-shadow:var(--sh2)}
+  .card .t{font-size:13.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .card .t .host{font-family:var(--mono);font-size:10.5px;color:var(--faint);font-weight:400}
+  .card .d{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.55}
+  .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:2px;background:var(--indigo-l);color:var(--indigo-d);font-weight:500}
+  .tag.hot{background:#ffebee;color:var(--red)}
+  .tag.local{background:#e8f5e9;color:var(--green)}
+
+  .empty{padding:40px 0;text-align:center;color:var(--faint);font-size:13px;display:none}
+
+  footer{border-top:1px solid var(--line);padding:16px;text-align:center;font-size:12px;color:var(--faint);background:var(--paper)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>BioNav · 生物信息学工具导航</h1>
+    <p>常用数据库 · 分析平台 · 在线工具 · 计算替代方案，一键直达。数据均为公开站点，全部链接新窗口打开。</p>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="inner">
+    <input id="q" type="search" placeholder="搜索工具 / 关键词，如 blast、geo、对接、单细胞…" autocomplete="off">
+    <span class="count" id="count"></span>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="chips" id="chips"></div>
+  <div id="cats"></div>
+  <div class="empty" id="empty">没有匹配的工具，换个关键词试试。</div>
+</main>
+
+<footer>BioNav · 静态单文件，可离线保存 · 收录公开生信资源</footer>
+
+<script>
+const DATA = [
+{no:"00", name:"本机已装 · 离线可用", desc:"本机确认已部署的工具与环境，无需联网", tools:[
+ {n:"Dotlet · 序列点阵图",u:"./dotlet.html",d:"本目录自建工具：双序列滑动窗口点阵图，纯浏览器本地计算，中英双语。",t:["本地"]},
+ {n:"Aligner · 双序列比对",u:"./aligner.html",d:"本目录自建工具：NW 全局 / SW 局部比对，Gotoh 仿射空位罚分，BLOSUM62/NUC.4.4。",t:["本地"]},
+ {n:"Python + Biopython",u:"https://biopython.org/",d:"本机 Python 环境已装 Biopython（矩阵校验用过 1.88），序列处理与脚本分析即用。",t:["本地"]},
+ {n:"Ubuntu 24.04 + conda",u:"https://bioconda.github.io/",d:"另一套开发环境：conda 可走 Bioconda 频道按需安装命令行生信工具。",t:["本地"]},
+]},
+{no:"01", name:"序列比对与搜索", desc:"BLAST、多序列比对、双序列对比、点阵图", tools:[
+ {n:"NCBI BLAST",u:"https://blast.ncbi.nlm.nih.gov/Blast.cgi",d:"最常用的核酸/蛋白序列相似性搜索入口，blastn/blastp/blastx 全系列。",t:["常用"]},
+ {n:"EBI Tools",u:"https://www.ebi.ac.uk/services",d:"EMBL-EBI 工具总入口：Clustal Omega、MAFFT、EMBOSS、InterProScan 等。"},
+ {n:"Clustal Omega",u:"https://www.ebi.ac.uk/jdispatcher/msa/clustalo",d:"经典多序列比对在线版，适合中小规模序列集。",t:["在线"]},
+ {n:"MAFFT",u:"https://mafft.cbrc.jp/alignment/server/",d:"高精度多序列比对，长序列与大数据集表现更好。"},
+ {n:"EMBOSS Needle / Water",u:"https://www.ebi.ac.uk/jdispatcher/psa",d:"双序列全局（Needleman-Wunsch）/ 局部（Smith-Waterman）比对。"},
+ {n:"Dotlet（本站）",u:"./dotlet.html",d:"双序列滑动窗口点阵图，本地浏览器完成，适合快速查看重复与同源区段。",t:["本地"]},
+ {n:"Aligner（本站）",u:"./aligner.html",d:"双序列 NW/SW 比对，仿射空位罚分，本地运行。",t:["本地"]},
+ {n:"DIAMOND",u:"https://github.com/bbuchfink/diamond",d:"超快蛋白比对工具，宏基因组注释主力，比 BLASTX 快数百倍。",t:["本地"]},
+ {n:"minimap2",u:"https://github.com/lh3/minimap2",d:"三代长读长比对金标准，也支持短序列与基因组间比对。",t:["本地"]},
+]},
+{no:"02", name:"序列与基因组数据库", desc:"核酸、蛋白、基因组组装与注释", tools:[
+ {n:"NCBI GenBank",u:"https://www.ncbi.nlm.nih.gov/genbank/",d:"核酸序列主库，几乎所有物种的序列起点。",t:["常用"]},
+ {n:"NCBI Datasets",u:"https://www.ncbi.nlm.nih.gov/datasets/",d:"基因组、基因、蛋白的批量下载门户，附带命令行工具。"},
+ {n:"Ensembl",u:"https://www.ensembl.org/",d:"真核基因组注释浏览与 BioMart 批量导出。"},
+ {n:"UCSC Genome Browser",u:"https://genome.ucsc.edu/",d:"基因组浏览器标杆，轨道式可视化与 Table Browser。"},
+ {n:"UniProt",u:"https://www.uniprot.org/",d:"蛋白序列与功能注释最权威库（Swiss-Prot 人工审编）。",t:["常用"]},
+ {n:"ENA / DDBJ",u:"https://www.ebi.ac.uk/ena/",d:"欧洲/日本核酸档案库，原始测序数据（SRA 镜像）下载。"},
+ {n:"CNGBdb（国家基因库）",u:"https://db.cngb.org/",d:"华大主导的国家基因库，国内访问速度快，含 GSA 数据提交。"},
+]},
+{no:"03", name:"文献与基因功能注释", desc:"文献检索、基因/通路/功能注释", tools:[
+ {n:"PubMed",u:"https://pubmed.ncbi.nlm.nih.gov/",d:"生物医学文献主库，配 MeSH 词表检索。",t:["常用"]},
+ {n:"GeneCards",u:"https://www.genecards.org/",d:"基因信息聚合门户：功能、表达、疾病关联一站看全。"},
+ {n:"Gene Ontology",u:"http://geneontology.org/",d:"GO 本体官网，BP/MF/CC 三大分支术语查询。"},
+ {n:"KEGG",u:"https://www.genome.jp/kegg/",d:"通路与代谢网络数据库，KEGG Mapper 做富集可视化。",t:["常用"]},
+ {n:"Reactome",u:"https://reactome.org/",d:"人工审编的信号通路库，路径图质量高。"},
+ {n:"InterPro",u:"https://www.ebi.ac.uk/interpro/",d:"蛋白结构域与家族整合注释（Pfam/SMART/PROSITE 合集）。"},
+ {n:"DAVID",u:"https://david.ncifcrf.gov/",d:"经典基因集功能富集分析网页工具。"},
+ {n:"Metascape",u:"https://metascape.org/",d:"一站式富集与 PPI 注释，图好看、上手快，适合快速出结果。",t:["常用"]},
+]},
+{no:"04", name:"转录组与 GEO 数据挖掘", desc:"表达矩阵、差异分析、公共数据再利用", tools:[
+ {n:"GEO",u:"https://www.ncbi.nlm.nih.gov/geo/",d:"表达谱公共数据主库，机制研究无实验条件时的金矿。",t:["常用"]},
+ {n:"GEO2R",u:"https://www.ncbi.nlm.nih.gov/geo/geo2r/",d:"GEO 内置在线差异分析（limma），零代码出差异基因表。",t:["在线"]},
+ {n:"SRA Explorer",u:"https://sra-explorer.info/",d:"SRA 原始数据检索与下载链接生成，比 NCBI 原生好用。"},
+ {n:"ArrayExpress / EBI Expression Atlas",u:"https://www.ebi.ac.uk/gxa/",d:"EBI 的表达数据存档与基线/差异表达浏览。"},
+ {n:"GTEx Portal",u:"https://gtexportal.org/",d:"人体各组织正常表达参考，查基因组织特异性首选。"},
+ {n:"DESeq2（Bioconductor）",u:"https://bioconductor.org/packages/DESeq2/",d:"RNA-seq 差异分析标准 R 包，配官方 vignette 跟做即可。",t:["本地"]},
+ {n:"Galaxy",u:"https://usegalaxy.org/",d:"免编程的在线分析工作流平台，转录组流程可全程网页完成。",t:["在线"]},
+]},
+{no:"05", name:"蛋白结构与分子对接", desc:"结构库、预测、对接与可视化", tools:[
+ {n:"PDB",u:"https://www.rcsb.org/",d:"蛋白结构主库，下载对接用受体结构的起点。",t:["常用"]},
+ {n:"AlphaFold DB",u:"https://alphafold.ebi.ac.uk/",d:"2 亿+ 预测结构直接下载，无晶体结构的蛋白先来这里。",t:["常用"]},
+ {n:"SWISS-MODEL",u:"https://swissmodel.expasy.org/",d:"同源建模在线服务器，模板自动选择。"},
+ {n:"AutoDock Vina",u:"https://vina.scripps.edu/",d:"开源分子对接金标准，配 AutoDockTools 准备文件。",t:["本地"]},
+ {n:"CB-Dock2",u:"https://cadd.labshare.cn/cb-dock2/",d:"在线盲对接（Vina 内核），自动找口袋，零安装出结果。",t:["在线"]},
+ {n:"PyMOL",u:"https://pymol.org/",d:"结构可视化与出图标准工具，对接结果展示必备。",t:["本地"]},
+ {n:"UCSF ChimeraX",u:"https://www.cgl.ucsf.edu/chimerax/",d:"免费结构可视化，ViewDockX 直接看 Vina 结果。",t:["本地"]},
+ {n:"Protein-Ligand Interaction Profiler",u:"https://plip-tool.biotec.tu-dresden.de/",d:"对接复合物相互作用自动分析（氢键/疏水/π 堆积）。"},
+]},
+{no:"06", name:"网络药理学与中药/成分分析", desc:"成分-靶点-通路，机制计算替代方案", tools:[
+ {n:"TCMSP",u:"https://old.tcmsp-e.com/tcmsp.php",d:"中药系统药理学平台，成分与靶点筛选经典入口（OB/DL 过滤）。",t:["常用"]},
+ {n:"SwissTargetPrediction",u:"https://www.swisstargetprediction.ch/",d:"小分子靶点预测，上传 SMILES 即出候选靶点。",t:["在线"]},
+ {n:"PubChem",u:"https://pubchem.ncbi.nlm.nih.gov/",d:"化合物结构与性质主库，下载 2D/3D SDF 供对接。",t:["常用"]},
+ {n:"STRING",u:"https://string-db.org/",d:"蛋白互作网络（PPI），靶点网络构建标配。",t:["常用"]},
+ {n:"Cytoscape",u:"https://cytoscape.org/",d:"网络可视化与分析桌面软件，成分-靶点-通路图出图工具。",t:["本地"]},
+ {n:"BATMAN-TCM",u:"http://bionet.ncpsb.org.cn/batman-tcm/",d:"中药成分靶点预测与富集一体化平台。"},
+ {n:"SEA Search Server",u:"https://sea.bkslab.org/",d:"基于相似性的靶点预测（Similarity Ensemble Approach）。"},
+]},
+{no:"07", name:"微生物与宏基因组", desc:"菌群分析、物种注释、培养组参考", tools:[
+ {n:"QIIME 2",u:"https://qiime2.org/",d:"16S/扩增子分析标准流程，插件化、可复现。",t:["本地"]},
+ {n:"SILVA",u:"https://www.arb-silva.de/",d:"rRNA 参考数据库，16S 物种注释首选。"},
+ {n:"Kraken2 / Bracken",u:"https://github.com/DerrickWood/kraken2",d:"宏基因组快速物种分类与丰度估计。",t:["本地"]},
+ {n:"MG-RAST",u:"https://www.mg-rast.org/",d:"宏基因组在线注释分析平台。"},
+ {n:"EzBioCloud",u:"https://www.ezbiocloud.net/",d:"细菌 16S 鉴定与全基因组平均核苷酸一致性（ANI）计算。"},
+]},
+{no:"08", name:"系统发育与进化", desc:"建树、可视化、分子进化", tools:[
+ {n:"MEGA",u:"https://www.megasoftware.net/",d:"分子进化分析桌面软件，建树入门标配。",t:["本地"]},
+ {n:"IQ-TREE",u:"http://www.iqtree.org/",d:"最大似然建树，ModelFinder 自动选模型。",t:["本地"]},
+ {n:"iTOL",u:"https://itol.embl.de/",d:"进化树在线美化与注释，出论文图常用。",t:["在线"]},
+ {n:"PhyloSuite",u:"https://github.com/dongzhang0725/PhyloSuite",d:"整合比对-修剪-建树流程的桌面套件，对初学者友好。",t:["本地"]},
+ {n:"FigTree",u:"http://tree.bio.ed.ac.uk/software/figtree/",d:"轻量进化树查看与标注。"},
+]},
+{no:"09", name:"编程环境与流程", desc:"语言发行版、包管理、工作流引擎", tools:[
+ {n:"Bioconductor",u:"https://bioconductor.org/",d:"R 生信包生态，DESeq2/edgeR/limma 都在这。",t:["常用"]},
+ {n:"Bioconda",u:"https://bioconda.github.io/",d:"conda 生信频道，命令行工具一键安装。"},
+ {n:"Biopython",u:"https://biopython.org/",d:"Python 生信基础库，序列读写与解析。",t:["本地"]},
+ {n:"Samtools / BCFtools",u:"https://www.htslib.org/",d:"SAM/BAM/VCF 处理瑞士军刀。"},
+ {n:"Nextflow",u:"https://www.nextflow.io/",d:"可复现工作流引擎，nf-core 社区现成流程很多。"},
+ {n:"nf-core",u:"https://nf-co.re/",d:"社区审编的 Nextflow 流程集：rnaseq、sarek、ampliseq 等。"},
+]},
+{no:"10", name:"学习与社区", desc:"教程、问答、课程", tools:[
+ {n:"Rosalind",u:"http://rosalind.info/",d:"生信编程闯关平台，从字符串处理到算法题，刷题入门。",t:["推荐"]},
+ {n:"Biostars",u:"https://www.biostars.org/",d:"生信问答社区，遇到报错先搜这里。",t:["常用"]},
+ {n:"SEQanswers",u:"http://seqanswers.com/",d:"测序技术老牌论坛。"},
+ {n:"生信菜鸟团 / 生信技能树",u:"https://space.bilibili.com/338686099",d:"B 站中文生信教程社区（生信技能树），R 与转录组系列友好。"},
+ {n:"Coursera · Genomic Data Science",u:"https://www.coursera.org/specializations/genomic-data-science",d:"JHU 基因组数据科学专项课，体系化入门。"},
+ {n:"EMBL-EBI Training",u:"https://www.ebi.ac.uk/training/",d:"EBI 官方免费在线课程与教程。"},
+]},
+];
+
+const catsEl = document.getElementById('cats');
+const chipsEl = document.getElementById('chips');
+const qEl = document.getElementById('q');
+const countEl = document.getElementById('count');
+const emptyEl = document.getElementById('empty');
+let activeCat = null;
+
+function host(u){ try{ return new URL(u, location.href).hostname || '本地'; }catch(e){ return '本地'; } }
+
+function renderChips(){
+  const mk = (label, val) => {
+    const c = document.createElement('span');
+    c.className = 'chip' + (activeCat===val ? ' on':'');
+    c.textContent = label;
+    c.onclick = () => { activeCat = (activeCat===val ? null : val); renderAll(); };
+    return c;
+  };
+  chipsEl.innerHTML = '';
+  chipsEl.appendChild(mk('全部', null));
+  DATA.forEach(cat => chipsEl.appendChild(mk(cat.no + ' ' + cat.name, cat.name)));
+}
+
+function renderCats(){
+  const q = qEl.value.trim().toLowerCase();
+  catsEl.innerHTML = '';
+  let shown = 0;
+  DATA.forEach(cat => {
+    if (activeCat && cat.name !== activeCat) return;
+    const tools = cat.tools.filter(t => !q ||
+      (t.n + ' ' + t.d + ' ' + cat.name).toLowerCase().includes(q));
+    if (!tools.length) return;
+    shown += tools.length;
+    const sec = document.createElement('section');
+    sec.className = 'cat';
+    sec.innerHTML = '<h2><span class="no">' + cat.no + '</span>' + cat.name +
+      '</h2><p class="desc">' + cat.desc + '（' + tools.length + '）</p>';
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    tools.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'card';
+      a.href = t.u; a.target = '_blank'; a.rel = 'noopener';
+      let tags = '';
+      (t.t||[]).forEach(x => {
+        const cls = x==='常用' ? 'tag hot' : (x==='本地' ? 'tag local' : 'tag');
+        tags += '<span class="' + cls + '">' + x + '</span>';
+      });
+      a.innerHTML = '<div class="t">' + t.n + ' ' + tags +
+        '<span class="host">' + host(t.u) + '</span></div>' +
+        '<div class="d">' + t.d + '</div>';
+      grid.appendChild(a);
+    });
+    sec.appendChild(grid);
+    catsEl.appendChild(sec);
+  });
+  emptyEl.style.display = shown ? 'none' : 'block';
+  countEl.textContent = shown + ' 个工具';
+}
+
+function renderAll(){ renderChips(); renderCats(); }
+qEl.addEventListener('input', renderCats);
+renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aligner · 双序列比对 / Pairwise Alignment</title>
+<meta name="description" content="aligner — 双序列比对工具（Needleman–Wunsch 全局 / Smith–Waterman 局部，仿射空位罚分），中英双语，全部计算在本地浏览器完成。">
+<style>
+  :root{
+    --indigo:#3f51b5; --indigo-d:#303f9f; --indigo-l:#e8eaf6; --indigo-2:#5f71cc;
+    --page:#eeeeee; --paper:#ffffff; --line:#e0e0e0; --line-2:#cfcfcf;
+    --ink:#212121; --ink-2:#424242; --muted:#757575; --faint:#9e9e9e;
+    --red:#d32f2f; --amber:#ef6c00; --green:#2e7d32; --blue:#1565c0;
+    --sans:"Roboto","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --mono:"Roboto Mono","JetBrains Mono","Cascadia Mono",Consolas,"Liberation Mono",ui-monospace,monospace;
+    --sh1:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+    --sh2:0 3px 6px rgba(0,0,0,.14),0 2px 4px rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--indigo);text-decoration:none}
+  button{font-family:inherit}
+
+  .appbar{position:sticky;top:0;z-index:40;background:var(--indigo);box-shadow:0 2px 4px rgba(0,0,0,.26)}
+  .appbar-in{max-width:1400px;margin:0 auto;height:52px;padding:0 24px;display:flex;align-items:center;gap:12px}
+  .brand{display:flex;align-items:center;gap:9px}
+  .mark{width:13px;height:13px;border-radius:50%;background:#fff;flex:none;box-shadow:0 0 0 3px rgba(255,255,255,.22)}
+  .name{color:#fff;font-size:19px;font-weight:500;letter-spacing:.2px;line-height:1}
+  .tag{color:#fff;font-size:11px;opacity:.75;border:1px solid rgba(255,255,255,.55);border-radius:2px;padding:0 4px;line-height:16px;margin-left:2px}
+  .appbar-sub{color:rgba(255,255,255,.82);font-size:12.5px;padding-left:12px;border-left:1px solid rgba(255,255,255,.3);white-space:nowrap}
+  .appbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .lang{display:inline-flex;border:1px solid rgba(255,255,255,.5);border-radius:2px;overflow:hidden}
+  .lang button{background:transparent;border:0;color:#fff;font-size:12px;padding:4px 10px;cursor:pointer;opacity:.85}
+  .lang button.on{background:#fff;color:var(--indigo);opacity:1;font-weight:500}
+
+  .tabbar{position:sticky;top:52px;z-index:35;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .tabbar-in{max-width:1400px;margin:0 auto;padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tab{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line-2);border-radius:2px;color:var(--ink-2);font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:7px 14px;cursor:pointer;line-height:1.4}
+  .tab:hover{background:#f5f5f5}
+  .tab.on{background:var(--indigo);border-color:var(--indigo);color:#fff;box-shadow:var(--sh1)}
+  .tab em{font-style:normal;font-family:var(--mono);font-size:10.5px;opacity:.7;text-transform:none}
+  .tab.on em{opacity:.9}
+  .quick{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .qfield{display:flex;align-items:center;gap:6px}
+  .qfield label{font-size:11px;color:var(--muted);white-space:nowrap}
+  .qfield select,.qfield input{font-family:var(--sans);font-size:12.5px;color:var(--ink);background:#fff;border:1px solid var(--line-2);border-radius:2px;padding:4px 6px;outline:none;height:30px}
+  .qfield input{width:58px;font-family:var(--mono);text-align:center}
+  .qfield select{cursor:pointer}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;background:#fff;color:var(--ink-2);border:1px solid var(--line-2);border-radius:2px;padding:7px 14px;cursor:pointer;line-height:1.4}
+  .btn:hover{background:#f5f5f5}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;box-shadow:var(--sh1)}
+  .btn.primary:hover{background:var(--indigo-d);border-color:var(--indigo-d);box-shadow:var(--sh2)}
+  .btn.flat{background:transparent;border-color:transparent;color:var(--indigo);text-transform:none;letter-spacing:.02em}
+  .btn.flat:hover{background:var(--indigo-l)}
+  .btn:disabled{opacity:.38;cursor:not-allowed;box-shadow:none}
+
+  .panelwrap{max-width:1400px;margin:0 auto;padding:0 24px}
+  .panel{background:#fff;box-shadow:var(--sh1);border-radius:2px;margin-top:14px}
+  .pane[hidden]{display:none}
+  .panel-body{padding:14px 16px 10px}
+  .panel-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 16px 12px;color:var(--muted);font-size:11.5px}
+  .panel-foot .sp{margin-left:auto}
+  textarea{width:100%;height:110px;resize:vertical;display:block;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink);background:#fafafa;border:1px solid var(--line);border-radius:2px;padding:10px 12px;outline:none}
+  textarea:focus{background:#fff;border-color:var(--indigo);box-shadow:0 0 0 2px rgba(63,81,181,.12)}
+  textarea::placeholder{color:#bdbdbd}
+  .pmeta{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .pmeta b{font-weight:500;color:var(--ink-2)}
+  .pmeta .warn{color:var(--amber)}
+  .paramgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px 22px}
+  .pfield > label{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .pfield select{width:100%;font-size:12.5px;padding:6px 8px;border:1px solid var(--line-2);border-radius:2px;background:#fff;color:var(--ink);height:32px}
+  .pfield .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .numrow{display:flex;gap:10px;flex-wrap:wrap}
+  .numfield{display:flex;align-items:center;gap:6px}
+  .numfield label{font-size:11px;color:var(--muted);white-space:nowrap}
+  .numfield input{width:62px;font-family:var(--mono);font-size:12.5px;text-align:center;background:#fff;border:1px solid var(--line-2);border-radius:2px;padding:4px 6px;height:30px;outline:none}
+  .numfield input:focus{border-color:var(--indigo)}
+
+  /* stats */
+  .stats{max-width:1400px;margin:14px auto 0;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:#fff;box-shadow:var(--sh1);border-radius:2px;padding:10px 14px}
+  .stat .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font-family:var(--mono);font-size:19px;font-weight:500;color:var(--indigo-d);margin-top:2px}
+  .stat .v small{font-size:11px;color:var(--muted);font-weight:400}
+
+  /* alignment view */
+  .alncard{max-width:1400px;margin:14px auto 0;padding:0 24px}
+  .alnpanel{background:#fff;box-shadow:var(--sh1);border-radius:2px}
+  .aln-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .aln-head h3{margin:0;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .aln-head .sp{margin-left:auto}
+  .aln-body{padding:12px 14px 16px;overflow-x:auto}
+  .aln{font-family:var(--mono);font-size:13px;line-height:1.55;letter-spacing:.04em;white-space:pre}
+  .aln .pos{color:var(--faint)}
+  .aln .lbl{color:var(--muted)}
+  .aln .m-id{background:#c5cae9;color:#1a237e}        /* match */
+  .aln .m-mm{background:#ffe0b2;color:#6d4c00}        /* mismatch */
+  .aln .m-pos{background:#c8e6c9;color:#1b5e20}       /* positive (blosum) */
+  .aln .m-gap{color:#bdbdbd}                           /* gap char */
+  .aln .mid-id{color:var(--indigo-d);font-weight:700}
+  .aln .mid-pos{color:var(--green)}
+  .aln .mid-mm{color:#d7ccc8}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 14px 12px;font-size:11.5px;color:var(--muted)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  .empty{max-width:1400px;margin:14px auto 0;padding:0 24px}
+  .empty-in{background:#fafafa;border:1px dashed var(--line-2);color:var(--muted);text-align:center;padding:34px 16px;border-radius:2px}
+  .empty-in h4{margin:0 0 6px;font-size:13px;font-weight:500;color:var(--ink-2)}
+  .empty-in p{margin:0;font-size:12px}
+
+  .appfoot{background:var(--indigo-d);color:rgba(255,255,255,.86);margin-top:32px}
+  .appfoot-in{max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11.5px}
+  .appfoot .sp{margin-left:auto}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:#323232;color:#fff;font-size:13px;padding:10px 16px;border-radius:2px;box-shadow:var(--sh2);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="brand">
+      <span class="mark"></span>
+      <span class="name">aligner</span>
+      <span class="tag">β</span>
+      <span class="appbar-sub" data-i18n="tagline">双序列比对</span>
+    </div>
+    <div class="appbar-right">
+      <div class="lang">
+        <button id="btnZh" type="button">中文</button>
+        <button id="btnEn" type="button">EN</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="tabbar">
+  <div class="tabbar-in">
+    <button class="tab on" type="button" data-pane="1"><span data-i18n="tab.seq1">序列 1</span><em id="tabLen1">—</em></button>
+    <button class="tab" type="button" data-pane="2"><span data-i18n="tab.seq2">序列 2</span><em id="tabLen2">—</em></button>
+    <button class="tab" type="button" data-pane="p"><span data-i18n="tab.params">参数</span></button>
+    <div class="quick">
+      <div class="qfield">
+        <label data-i18n="q.algo">算法</label>
+        <select id="selAlgo">
+          <option value="global" data-i18n="opt.global">全局（Needleman–Wunsch）</option>
+          <option value="local" data-i18n="opt.local">局部（Smith–Waterman）</option>
+        </select>
+      </div>
+      <div class="qfield">
+        <label data-i18n="q.matrix">打分方案</label>
+        <select id="selScheme">
+          <option value="identity" data-i18n="opt.identity">一致性 +1 / −1</option>
+          <option value="nuc44" data-i18n="opt.nuc44">NUC.4.4 · 核酸</option>
+          <option value="blosum62" data-i18n="opt.blosum62">BLOSUM62 · 蛋白质</option>
+        </select>
+      </div>
+      <button class="btn primary" id="btnAlign" data-i18n="btn.align">比对</button>
+    </div>
+  </div>
+</div>
+
+<div class="panelwrap">
+  <div class="panel" id="panel">
+    <div class="pane" id="pane1">
+      <div class="panel-body"><textarea id="editArea" spellcheck="false" data-i18n-ph="ph.seq" placeholder="粘贴 FASTA 或纯序列"></textarea></div>
+      <div class="panel-foot">
+        <div class="pmeta" id="meta1"></div>
+        <span class="sp"></span>
+        <button class="btn flat" type="button" id="btnCopy1" data-i18n="btn.copyFrom2">由序列 2 复制</button>
+        <button class="btn flat" type="button" id="btnDemo" data-i18n="btn.demo">载入示例</button>
+        <button class="btn flat" type="button" id="btnClear" data-i18n="btn.clear">清空</button>
+      </div>
+    </div>
+    <div class="pane" id="pane2" hidden>
+      <div class="panel-body"><textarea id="editArea2" spellcheck="false" data-i18n-ph="ph.seq" placeholder="粘贴 FASTA 或纯序列"></textarea></div>
+      <div class="panel-foot">
+        <div class="pmeta" id="meta2"></div>
+        <span class="sp"></span>
+        <button class="btn flat" type="button" id="btnCopy2" data-i18n="btn.copyFrom1">由序列 1 复制</button>
+        <span class="pmeta" data-i18n-html="hint.shortcut">Ctrl + Enter 比对</span>
+      </div>
+    </div>
+    <div class="pane" id="paneP" hidden>
+      <div class="panel-body">
+        <div class="paramgrid">
+          <div class="pfield">
+            <label data-i18n="lbl.gap">空位罚分（仿射）</label>
+            <div class="numrow">
+              <div class="numfield"><label data-i18n="lbl.open">开放 open</label><input id="numOpen" type="number" step="0.5" value="10"></div>
+              <div class="numfield"><label data-i18n="lbl.extend">延伸 extend</label><input id="numExtend" type="number" step="0.5" value="0.5"></div>
+            </div>
+          </div>
+          <div class="pfield">
+            <label data-i18n="lbl.wrap">比对显示</label>
+            <div class="numrow">
+              <div class="numfield"><label data-i18n="lbl.width">每行宽度</label>
+                <select id="selWidth"><option>60</option><option selected>80</option><option>100</option><option>120</option></select>
+              </div>
+              <button class="btn" type="button" id="btnFasta" data-i18n="btn.fasta">复制 FASTA</button>
+              <button class="btn" type="button" id="btnClustal" data-i18n="btn.clustal">复制文本</button>
+            </div>
+          </div>
+          <div class="pfield">
+            <label data-i18n="lbl.note0">说明</label>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7" data-i18n="lbl.note">
+              罚分为正值，内部按 −(open + k·extend) 计。序列长度乘积上限 4×10⁷ 格。
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel-foot"><div class="pmeta" id="runStats"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="stats" id="statRow" hidden>
+  <div class="stat"><div class="k" data-i18n="st.score">得分</div><div class="v" id="stScore">—</div></div>
+  <div class="stat"><div class="k" data-i18n="st.identity">一致性</div><div class="v" id="stIdent">—</div></div>
+  <div class="stat"><div class="k" data-i18n="st.similar">相似度</div><div class="v" id="stSim">—</div></div>
+  <div class="stat"><div class="k" data-i18n="st.gaps">空位</div><div class="v" id="stGaps">—</div></div>
+  <div class="stat"><div class="k" data-i18n="st.len">比对长度</div><div class="v" id="stLen">—</div></div>
+  <div class="stat"><div class="k" data-i18n="st.range">范围</div><div class="v" id="stRange" style="font-size:13px;line-height:1.6">—</div></div>
+</div>
+
+<div class="alncard">
+  <div class="alnpanel" id="alnPanel" hidden>
+    <div class="aln-head">
+      <h3 data-i18n="aln.title">比对结果</h3>
+      <span class="pmeta" id="alnMeta"></span>
+      <span class="sp"></span>
+    </div>
+    <div class="aln-body"><div class="aln" id="alnView"></div></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="empty" id="emptyWrap">
+    <div class="empty-in">
+      <h4 data-i18n="empty.title">尚未比对</h4>
+      <p data-i18n="empty.body">输入两条序列，然后按「比对」。</p>
+    </div>
+  </div>
+</div>
+
+<footer class="appfoot">
+  <div class="appfoot-in">
+    <span data-i18n="footer.local">全部计算在本地浏览器完成，序列不会上传。</span>
+    <span class="sp"></span>
+    <span>aligner · single-file · no dependencies</span>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- i18n ---------- */
+  var I18N = {
+    zh: {
+      'tagline':'双序列比对','tab.seq1':'序列 1','tab.seq2':'序列 2','tab.params':'参数',
+      'q.algo':'算法','q.matrix':'打分方案',
+      'opt.global':'全局（Needleman–Wunsch）','opt.local':'局部（Smith–Waterman）',
+      'opt.identity':'一致性 +1 / −1','opt.nuc44':'NUC.4.4 · 核酸','opt.blosum62':'BLOSUM62 · 蛋白质',
+      'lbl.gap':'空位罚分（仿射）','lbl.open':'开放 open','lbl.extend':'延伸 extend',
+      'lbl.wrap':'比对显示','lbl.width':'每行宽度','lbl.note0':'说明',
+      'lbl.note':'罚分为正值，内部按 −(open + k·extend) 计。序列长度乘积上限 4×10⁷ 格。',
+      'btn.align':'比对','btn.demo':'载入示例','btn.clear':'清空','btn.fasta':'复制 FASTA','btn.clustal':'复制文本',
+      'btn.copyFrom1':'由序列 1 复制','btn.copyFrom2':'由序列 2 复制',
+      'ph.seq':'粘贴 FASTA 或纯序列','hint.shortcut':'Ctrl + Enter 比对',
+      'meta.len':'长度','meta.gc':'GC','meta.unknown':'非标准字符','meta.empty':'空',
+      'type.dna':'DNA','type.rna':'RNA','type.protein':'蛋白质','type.unknown':'类型未识别',
+      'st.score':'得分','st.identity':'一致性','st.similar':'相似度','st.gaps':'空位','st.len':'比对长度','st.range':'范围',
+      'aln.title':'比对结果','empty.title':'尚未比对','empty.body':'输入两条序列，然后按「比对」。',
+      'lg.id':'一致','lg.pos':'相似（正分）','lg.mm':'不匹配','lg.gap':'空位',
+      'aln.meta':'{algo} · {scheme} · open {go} / extend {ge} · {ms} ms',
+      'algo.global':'全局比对','algo.local':'局部比对',
+      'footer.local':'全部计算在本地浏览器完成，序列不会上传。',
+      'toast.copied':'已复制到剪贴板','toast.copyFail':'复制失败，请手动选择文本','toast.noAln':'请先比对',
+      'err.emptyA':'请先输入序列 1。','err.emptyB':'请先输入序列 2。','err.short':'序列长度至少为 2。',
+      'err.tooBig':'矩阵规模 {n} × {m} 超过上限（4×10⁷ 格）。请截取较短片段。',
+      'err.gap':'空位罚分必须为非负数。'
+    },
+    en: {
+      'tagline':'Pairwise alignment','tab.seq1':'Sequence 1','tab.seq2':'Sequence 2','tab.params':'Parameters',
+      'q.algo':'Algorithm','q.matrix':'Scoring matrix',
+      'opt.global':'Global (Needleman–Wunsch)','opt.local':'Local (Smith–Waterman)',
+      'opt.identity':'Identity +1 / −1','opt.nuc44':'NUC.4.4 · nucleotide','opt.blosum62':'BLOSUM62 · protein',
+      'lbl.gap':'Gap penalty (affine)','lbl.open':'open','lbl.extend':'extend',
+      'lbl.wrap':'Display','lbl.width':'Line width','lbl.note0':'Notes',
+      'lbl.note':'Penalties are positive numbers, applied as −(open + k·extend). Matrix limit 4×10⁷ cells.',
+      'btn.align':'Align','btn.demo':'Load example','btn.clear':'Clear','btn.fasta':'Copy FASTA','btn.clustal':'Copy text',
+      'btn.copyFrom1':'Copy from sequence 1','btn.copyFrom2':'Copy from sequence 2',
+      'ph.seq':'Paste FASTA or raw sequence','hint.shortcut':'Ctrl + Enter to align',
+      'meta.len':'length','meta.gc':'GC','meta.unknown':'non-standard','meta.empty':'empty',
+      'type.dna':'DNA','type.rna':'RNA','type.protein':'protein','type.unknown':'unrecognised',
+      'st.score':'Score','st.identity':'Identity','st.similar':'Similarity','st.gaps':'Gaps','st.len':'Aligned length','st.range':'Range',
+      'aln.title':'Alignment','empty.title':'Nothing aligned yet','empty.body':'Enter two sequences, then press Align.',
+      'lg.id':'identical','lg.pos':'similar (positive)','lg.mm':'mismatch','lg.gap':'gap',
+      'aln.meta':'{algo} · {scheme} · open {go} / extend {ge} · {ms} ms',
+      'algo.global':'global','algo.local':'local',
+      'footer.local':'All computation runs locally in your browser; sequences are never uploaded.',
+      'toast.copied':'Copied to clipboard','toast.copyFail':'Copy failed — select text manually','toast.noAln':'Align something first',
+      'err.emptyA':'Sequence 1 is empty.','err.emptyB':'Sequence 2 is empty.','err.short':'Sequences must be at least 2 residues.',
+      'err.tooBig':'Matrix {n} × {m} exceeds the 4×10⁷-cell limit. Trim the sequences.',
+      'err.gap':'Gap penalties must be non-negative.'
+    }
+  };
+  var LANG = 'zh';
+  function t(key, vars) {
+    var s = I18N[LANG][key]; if (s === undefined) s = I18N.zh[key] !== undefined ? I18N.zh[key] : key;
+    if (vars) for (var k in vars) s = s.split('{' + k + '}').join(vars[k]);
+    return s;
+  }
+
+  /* ---------- utils ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function pct(v) { return (v * 100).toFixed(1) + '%'; }
+  function toast(msg) {
+    var el = $('toast'); el.textContent = msg; el.classList.add('on');
+    clearTimeout(el._t); el._t = setTimeout(function () { el.classList.remove('on'); }, 1900);
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(t('toast.copied')); }, function () { legacyCopy(text); });
+    } else legacyCopy(text);
+  }
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea'); ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast(t('toast.copied')); } catch (e) { toast(t('toast.copyFail')); }
+    document.body.removeChild(ta);
+  }
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+  /* ---------- sequence ---------- */
+  var AA20 = 'ARNDCQEGHILKMFPSTWYV';
+  function parseSeq(raw) {
+    var kept = [];
+    String(raw || '').split(/\r?\n/).forEach(function (l) {
+      if (/^\s*>/.test(l) || /^\s*;/.test(l)) return;
+      kept.push(l);
+    });
+    return kept.join('').replace(/[\s\d]/g, '').toUpperCase();
+  }
+  function classify(s) {
+    if (!s) return { type: 'empty', validFrac: 1 };
+    var nuc = 0, aa = 0, valid = 0, nucSet = 'ACGTU', aaSet = AA20 + 'BJZX*';
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i], isN = nucSet.indexOf(c) >= 0, isA = aaSet.indexOf(c) >= 0;
+      if (isN) nuc++; if (isA) aa++; if (isN || isA) valid++;
+    }
+    var n = s.length, type = 'unknown';
+    if (nuc / n >= 0.95) type = (s.indexOf('U') >= 0 && s.indexOf('T') < 0) ? 'rna' : 'dna';
+    else if (aa / n >= 0.95) type = 'protein';
+    return { type: type, validFrac: valid / n };
+  }
+  function gcContent(s) {
+    var gc = 0, at = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === 'G' || c === 'C') gc++;
+      else if ('ATU'.indexOf(c) >= 0) at++;
+    }
+    return (gc + at) ? gc / (gc + at) : 0;
+  }
+
+  /* ---------- scoring ---------- */
+  var BLOSUM62_ROWS = [
+    [ 4,-1,-2,-2, 0,-1,-1, 0,-2,-1,-1,-1,-1,-2,-1, 1, 0,-3,-2, 0],
+    [-1, 5, 0,-2,-3, 1, 0,-2, 0,-3,-2, 2,-1,-3,-2,-1,-1,-3,-2,-3],
+    [-2, 0, 6, 1,-3, 0, 0, 0, 1,-3,-3, 0,-2,-3,-2, 1, 0,-4,-2,-3],
+    [-2,-2, 1, 6,-3, 0, 2,-1,-1,-3,-4,-1,-3,-3,-1, 0,-1,-4,-3,-3],
+    [ 0,-3,-3,-3, 9,-3,-4,-3,-3,-1,-1,-3,-1,-2,-3,-1,-1,-2,-2,-1],
+    [-1, 1, 0, 0,-3, 5, 2,-2, 0,-3,-2, 1, 0,-3,-1, 0,-1,-2,-1,-2],
+    [-1, 0, 0, 2,-4, 2, 5,-2, 0,-3,-3, 1,-2,-3,-1, 0,-1,-3,-2,-2],
+    [ 0,-2, 0,-1,-3,-2,-2, 6,-2,-4,-4,-2,-3,-3,-2, 0,-2,-2,-3,-3],
+    [-2, 0, 1,-1,-3, 0, 0,-2, 8,-3,-3,-1,-2,-1,-2,-1,-2,-2, 2,-3],
+    [-1,-3,-3,-3,-1,-3,-3,-4,-3, 4, 2,-3, 1, 0,-3,-2,-1,-3,-1, 3],
+    [-1,-2,-3,-4,-1,-2,-3,-4,-3, 2, 4,-2, 2, 0,-3,-2,-1,-2,-1, 1],
+    [-1, 2, 0,-1,-3, 1, 1,-2,-1,-3,-2, 5,-1,-3,-1, 0,-1,-3,-2,-2],
+    [-1,-1,-2,-3,-1, 0,-2,-3,-2, 1, 2,-1, 5, 0,-2,-1,-1,-1,-1, 1],
+    [-2,-3,-3,-3,-2,-3,-3,-3,-1, 0, 0,-3, 0, 6,-4,-2,-2, 1, 3,-1],
+    [-1,-2,-2,-1,-3,-1,-1,-2,-2,-3,-3,-1,-2,-4, 7,-1,-1,-4,-3,-2],
+    [ 1,-1, 1, 0,-1, 0, 0, 0,-1,-2,-2, 0,-1,-2,-1, 4, 1,-3,-2,-2],
+    [ 0,-1, 0,-1,-1,-1,-1,-2,-2,-1,-1,-1,-1,-2,-1, 1, 5,-2,-2, 0],
+    [-3,-3,-4,-4,-2,-2,-3,-2,-2,-3,-2,-3,-1, 1,-4,-3,-2,11, 2,-3],
+    [-2,-2,-2,-3,-2,-1,-2,-3, 2,-1,-1,-2,-1, 3,-3,-2,-2, 2, 7,-1],
+    [ 0,-3,-3,-3,-1,-2,-2,-3,-3, 3, 1,-2, 1,-1,-2,-2, 0,-3,-1, 4]
+  ];
+  var NUC44_ROWS = [[5,-4,-4,-4],[-4,5,-4,-4],[-4,-4,5,-4],[-4,-4,-4,5]];
+  function buildIndex(letters) {
+    var idx = new Int8Array(256); for (var i = 0; i < 256; i++) idx[i] = -1;
+    for (var k = 0; k < letters.length; k++) idx[letters.charCodeAt(k)] = k;
+    return idx;
+  }
+  var SCHEMES = {
+    identity: { label: 'Identity', match: 1, mismatch: -1, positive: 0 },
+    nuc44:    { label: 'NUC.4.4', rows: NUC44_ROWS, idx: buildIndex('ACGT'), positive: 0 },
+    blosum62: { label: 'BLOSUM62', rows: BLOSUM62_ROWS, idx: buildIndex(AA20), positive: 0 }
+  };
+  SCHEMES.nuc44.idx['U'.charCodeAt(0)] = 3;
+  SCHEMES.blosum62.positive = 1; /* show "similar" class */
+
+  function scoreFn(scheme) {
+    if (scheme.match !== undefined) {
+      return function (a, b) { return a === b ? scheme.match : scheme.mismatch; };
+    }
+    var T = scheme.rows, IDX = scheme.idx;
+    return function (a, b) {
+      var ia = IDX[a.charCodeAt(0) & 255], ib = IDX[b.charCodeAt(0) & 255];
+      return (ia < 0 || ib < 0) ? -4 : T[ia][ib];
+    };
+  }
+
+  /* ---------- DP alignment (affine gaps, Gotoh) ---------- */
+  var MAX_CELLS = 4e7;
+  function align(A, B, algo, scheme, gapOpen, gapExt) {
+    var n = A.length, m = B.length;
+    var local = algo === 'local';
+    var s = scoreFn(scheme);
+    var W = m + 1;
+    var M = new Float64Array((n + 1) * W);   /* match/mismatch ending */
+    var Ix = new Float64Array((n + 1) * W);  /* gap in B */
+    var Iy = new Float64Array((n + 1) * W);  /* gap in A */
+    var TB = new Uint8Array((n + 1) * W);    /* 0 none,1 M,2 Ix,3 Iy */
+    var NEG = -1e15, go = gapOpen, ge = gapExt;
+
+    if (local) {
+      /* all zeros already */
+    } else {
+      for (var i = 1; i <= n; i++) { M[i * W] = NEG; Ix[i * W] = NEG; Iy[i * W] = -(go + i * ge); TB[i * W] = 3; }
+      for (var j = 1; j <= m; j++) { M[j] = NEG; Iy[j] = NEG; Ix[j] = -(go + j * ge); TB[j] = 2; }
+    }
+
+    var best = 0, bi = 0, bj = 0;
+    for (var r = 1; r <= n; r++) {
+      var row = r * W, up = (r - 1) * W;
+      var ca = A[r - 1];
+      for (var c = 1; c <= m; c++) {
+        var sc = s(ca, B[c - 1]);
+        var ix = Math.max(Ix[up + c] - ge, M[up + c] - go - ge, Iy[up + c] - go - ge);
+        var iy = Math.max(Iy[row + c - 1] - ge, M[row + c - 1] - go - ge, Ix[row + c - 1] - go - ge);
+        var mm = Math.max(M[up + c - 1], Ix[up + c - 1], Iy[up + c - 1]) + sc;
+        if (local) {
+          if (ix < 0) ix = 0; if (iy < 0) iy = 0; if (mm < 0) mm = 0;
+        }
+        Ix[row + c] = ix; Iy[row + c] = iy; M[row + c] = mm;
+        var mx = Math.max(mm, ix, iy);
+        TB[row + c] = (mx === mm) ? 1 : (mx === ix ? 2 : 3);
+        if (local && mx > best) { best = mx; bi = r; bj = c; }
+      }
+    }
+
+    var ti, tj, finalScore;
+    if (local) { ti = bi; tj = bj; finalScore = best; }
+    else {
+      ti = n; tj = m;
+      finalScore = Math.max(M[n * W + m], Ix[n * W + m], Iy[n * W + m]);
+    }
+
+    /* traceback */
+    var alnA = [], alnB = [], cur;
+    if (local) {
+      var v0 = Math.max(M[ti * W + tj], Ix[ti * W + tj], Iy[ti * W + tj]);
+      if (v0 <= 0) { return { a: '', b: '', score: 0, si: 0, sj: 0, ei: 0, ej: 0 }; }
+      cur = (v0 === M[ti * W + tj]) ? 1 : (v0 === Ix[ti * W + tj] ? 2 : 3);
+    } else {
+      cur = TB[ti * W + tj] || 1;
+    }
+    var ei = ti, ej = tj;
+    while (ti > 0 && tj > 0) {
+      if (local) {
+        var curScore = cur === 1 ? M[ti * W + tj] : cur === 2 ? Ix[ti * W + tj] : Iy[ti * W + tj];
+        if (curScore <= 0) break;
+      }
+      if (cur === 1) {
+        alnA.push(A[ti - 1]); alnB.push(B[tj - 1]);
+        var mv = M[ti * W + tj] - s(A[ti - 1], B[tj - 1]);
+        var d = M[(ti - 1) * W + tj - 1], x = Ix[(ti - 1) * W + tj - 1], y = Iy[(ti - 1) * W + tj - 1];
+        cur = (mv === d) ? 1 : (mv === x ? 2 : 3);
+        ti--; tj--;
+      } else if (cur === 2) {
+        alnA.push(A[ti - 1]); alnB.push('-');
+        var cv = Ix[ti * W + tj];
+        if (cv === Ix[(ti - 1) * W + tj] - ge) cur = 2;
+        else if (cv === M[(ti - 1) * W + tj] - go - ge) cur = 1;
+        else cur = 3;
+        ti--;
+      } else {
+        alnA.push('-'); alnB.push(B[tj - 1]);
+        var cv2 = Iy[ti * W + tj];
+        if (cv2 === Iy[ti * W + tj - 1] - ge) cur = 3;
+        else if (cv2 === M[ti * W + tj - 1] - go - ge) cur = 1;
+        else cur = 2;
+        tj--;
+      }
+      if (ti === 0 || tj === 0) {
+        if (local) break;
+      }
+    }
+    if (!local) {
+      while (ti > 0) { alnA.push(A[--ti]); alnB.push('-'); }
+      while (tj > 0) { alnB.push(B[--tj]); alnA.push('-'); }
+    }
+    return {
+      a: alnA.reverse().join(''), b: alnB.reverse().join(''),
+      score: finalScore, si: ti, sj: tj, ei: ei, ej: ej
+    };
+  }
+
+  /* ---------- state / ui ---------- */
+  var state = { raw1: '', raw2: '', seq1: '', seq2: '', pane: 1, result: null, ms: 0 };
+
+  function updateMeta() {
+    [{ raw: state.raw1, el: $('meta1'), tab: $('tabLen1') },
+     { raw: state.raw2, el: $('meta2'), tab: $('tabLen2') }].forEach(function (p) {
+      var seq = parseSeq(p.raw);
+      if (!seq) { p.el.innerHTML = '<span>' + t('meta.empty') + '</span>'; p.tab.textContent = '—'; return; }
+      var info = classify(seq);
+      var isNuc = info.type === 'dna' || info.type === 'rna';
+      var unit = isNuc ? 'bp' : 'aa';
+      var parts = ['<span>' + t('meta.len') + ' <b>' + fmtInt(seq.length) + ' ' + unit + '</b></span>',
+                   '<span>' + t('type.' + info.type) + '</span>'];
+      if (isNuc) parts.push('<span>' + t('meta.gc') + ' <b>' + pct(gcContent(seq)) + '</b></span>');
+      if (info.validFrac < 0.999)
+        parts.push('<span class="warn">' + t('meta.unknown') + ' ' + Math.round((1 - info.validFrac) * seq.length) + '</span>');
+      p.el.innerHTML = parts.join('');
+      p.tab.textContent = fmtInt(seq.length) + ' ' + unit;
+    });
+  }
+
+  function run(showErrors) {
+    state.raw1 = $('editArea').value; state.raw2 = $('editArea2').value;
+    state.seq1 = parseSeq(state.raw1); state.seq2 = parseSeq(state.raw2);
+    updateMeta();
+
+    var A = state.seq1, B = state.seq2;
+    if (!A.length) { if (showErrors) { setPane(1); toast(t('err.emptyA')); } return false; }
+    if (!B.length) { if (showErrors) { setPane(2); toast(t('err.emptyB')); } return false; }
+    if (A.length < 2 || B.length < 2) { if (showErrors) toast(t('err.short')); return false; }
+    if (A.length * B.length > MAX_CELLS) {
+      if (showErrors) toast(t('err.tooBig', { n: fmtInt(A.length), m: fmtInt(B.length) }));
+      return false;
+    }
+    var go = parseFloat($('numOpen').value), ge = parseFloat($('numExtend').value);
+    if (!(go >= 0) || !(ge >= 0)) { if (showErrors) toast(t('err.gap')); return false; }
+
+    var algo = $('selAlgo').value, scheme = SCHEMES[$('selScheme').value];
+    var t0 = performance.now();
+    var res = align(A, B, algo, scheme, go, ge);
+    state.ms = performance.now() - t0;
+    state.result = res;
+    state.algo = algo; state.scheme = scheme; state.go = go; state.ge = ge;
+    renderResult();
+    persist();
+    return true;
+  }
+
+  function renderResult() {
+    var r = state.result;
+    $('emptyWrap').style.display = 'none';
+    $('alnPanel').hidden = false;
+    $('statRow').hidden = false;
+
+    var L = r.a.length;
+    var id = 0, sim = 0, gaps = 0;
+    var s = scoreFn(state.scheme);
+    for (var k = 0; k < L; k++) {
+      var a = r.a[k], b = r.b[k];
+      if (a === '-' || b === '-') { gaps++; continue; }
+      if (a === b) { id++; sim++; }
+      else if (s(a, b) > 0) sim++;
+    }
+    var pairs = L - gaps;
+
+    $('stScore').textContent = (Math.round(r.score * 100) / 100).toString();
+    $('stIdent').textContent = pct(pairs ? id / L : 0) + ' <small>' + id + '/' + L + '</small>';
+    $('stSim').textContent = pct(pairs ? sim / L : 0) + ' <small>' + sim + '/' + L + '</small>';
+    $('stGaps').textContent = pct(L ? gaps / L : 0) + ' <small>' + gaps + '</small>';
+    $('stLen').textContent = fmtInt(L);
+    $('stRange').innerHTML = state.algo === 'local'
+      ? '1: ' + fmtInt(r.si + 1) + '–' + fmtInt(r.ei) + '<br>2: ' + fmtInt(r.sj + 1) + '–' + fmtInt(r.ej)
+      : '1: 1–' + fmtInt(state.seq1.length) + '<br>2: 1–' + fmtInt(state.seq2.length);
+
+    $('alnMeta').textContent = t('aln.meta', {
+      algo: t('algo.' + state.algo), scheme: state.scheme.label,
+      go: state.go, ge: state.ge, ms: state.ms.toFixed(0)
+    });
+    $('runStats').textContent = state.seq1.length + ' × ' + state.seq2.length + ' · ' + state.ms.toFixed(0) + ' ms';
+
+    renderAlignment();
+    renderLegend();
+  }
+
+  function renderAlignment() {
+    var r = state.result;
+    var w = parseInt($('selWidth').value, 10) || 80;
+    var s = scoreFn(state.scheme);
+    var html = [];
+    var p1 = r.si, p2 = r.sj; /* consumed counts */
+    var numW = String(Math.max(r.ei, r.ej)).length;
+
+    for (var st = 0; st < r.a.length; st += w) {
+      var segA = r.a.substr(st, w), segB = r.b.substr(st, w);
+      var startA = p1 + countNonGap(r.a.slice(0, st)) , startB = p2 + countNonGap(r.b.slice(0, st));
+      var endA = startA + countNonGap(segA) - 1, endB = startB + countNonGap(segB) - 1;
+
+      var hA = '', hB = '', hM = '';
+      for (var k = 0; k < segA.length; k++) {
+        var a = segA[k], b = segB[k];
+        if (a === '-' || b === '-') {
+          hA += '<span class="m-gap">' + a + '</span>';
+          hB += '<span class="m-gap">' + b + '</span>';
+          hM += '<span class="mid-mm"> </span>';
+        } else if (a === b) {
+          hA += '<span class="m-id">' + a + '</span>';
+          hB += '<span class="m-id">' + b + '</span>';
+          hM += '<span class="mid-id">|</span>';
+        } else if (s(a, b) > 0) {
+          hA += '<span class="m-pos">' + a + '</span>';
+          hB += '<span class="m-pos">' + b + '</span>';
+          hM += '<span class="mid-pos">:</span>';
+        } else {
+          hA += '<span class="m-mm">' + a + '</span>';
+          hB += '<span class="m-mm">' + b + '</span>';
+          hM += '<span class="mid-mm"> </span>';
+        }
+      }
+      var la = '1 ' + padNum(startA + 1, numW), lb = '2 ' + padNum(startB + 1, numW);
+      var ra = ' ' + Math.max(endA + 1, startA), rb = ' ' + Math.max(endB + 1, startB);
+      html.push('<span class="lbl">' + la + ' </span>' + hA + '<span class="pos">' + ra + '</span>');
+      html.push('<span class="lbl">' + padStr('', numW + 2) + ' </span>' + hM);
+      html.push('<span class="lbl">' + lb + ' </span>' + hB + '<span class="pos">' + rb + '</span>');
+      html.push('');
+    }
+    $('alnView').innerHTML = html.join('\n');
+  }
+  function countNonGap(str) { var c = 0; for (var i = 0; i < str.length; i++) if (str[i] !== '-') c++; return c; }
+  function padNum(v, w) { var s = String(v); while (s.length < w) s = ' ' + s; return s; }
+  function padStr(s, w) { while (s.length < w) s += ' '; return s; }
+
+  function renderLegend() {
+    $('legend').innerHTML =
+      '<span><i style="background:#c5cae9"></i>' + t('lg.id') + ' |</span>' +
+      (state.scheme.positive ? '<span><i style="background:#c8e6c9"></i>' + t('lg.pos') + ' :</span>' : '') +
+      '<span><i style="background:#ffe0b2"></i>' + t('lg.mm') + '</span>' +
+      '<span><i style="background:#eee;border:1px solid #ddd"></i>' + t('lg.gap') + ' -</span>';
+  }
+
+  function wrapFasta(seq, w) {
+    var out = [];
+    for (var i = 0; i < seq.length; i += w) out.push(seq.substr(i, w));
+    return out.join('\n');
+  }
+  function copyFasta() {
+    if (!state.result) { toast(t('toast.noAln')); return; }
+    copyText('>seq1_aligned\n' + wrapFasta(state.result.a, 60) + '\n>seq2_aligned\n' + wrapFasta(state.result.b, 60));
+  }
+  function copyClustal() {
+    if (!state.result) { toast(t('toast.noAln')); return; }
+    var r = state.result, w = 60, lines = [];
+    for (var st = 0; st < r.a.length; st += w) {
+      var segA = r.a.substr(st, w), segB = r.b.substr(st, w), mid = '';
+      for (var k = 0; k < segA.length; k++) {
+        var a = segA[k], b = segB[k];
+        mid += (a === b && a !== '-') ? '|' : ' ';
+      }
+      lines.push('seq1  ' + segA, '      ' + mid, 'seq2  ' + segB, '');
+    }
+    copyText(lines.join('\n'));
+  }
+
+  /* ---------- panes / persistence ---------- */
+  function setPane(n) {
+    state.pane = n;
+    document.querySelectorAll('.tab').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-pane') === String(n));
+    });
+    $('pane1').hidden = n !== 1; $('pane2').hidden = n !== 2; $('paneP').hidden = n !== 'p';
+    if (n === 1) $('editArea').value = state.raw1;
+    if (n === 2) $('editArea2').value = state.raw2;
+    updateMeta();
+  }
+  function persist() {
+    try {
+      localStorage.setItem('aligner.v1', JSON.stringify({
+        a: state.raw1, b: state.raw2, algo: $('selAlgo').value, scheme: $('selScheme').value,
+        go: $('numOpen').value, ge: $('numExtend').value, lang: LANG
+      }));
+    } catch (e) {}
+  }
+  function restore() {
+    var raw;
+    try { raw = localStorage.getItem('aligner.v1'); } catch (e) { return; }
+    if (!raw) return;
+    var d; try { d = JSON.parse(raw); } catch (e) { return; }
+    if (d.lang === 'en' || d.lang === 'zh') LANG = d.lang;
+    if (typeof d.a === 'string') { state.raw1 = d.a; $('editArea').value = d.a; }
+    if (typeof d.b === 'string') { state.raw2 = d.b; $('editArea2').value = d.b; }
+    if (d.algo) $('selAlgo').value = d.algo;
+    if (d.scheme && SCHEMES[d.scheme]) $('selScheme').value = d.scheme;
+    if (d.go !== undefined) $('numOpen').value = d.go;
+    if (d.ge !== undefined) $('numExtend').value = d.ge;
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function loadDemo() {
+    var rnd = mulberry32(20261018), bases = 'ACGT';
+    var A = []; for (var i = 0; i < 320; i++) A.push(bases[Math.floor(rnd() * 4)]);
+    A = A.join('');
+    var ch = A.split('');
+    for (var j = 0; j < ch.length; j++) if (rnd() < 0.08) ch[j] = bases[Math.floor(rnd() * 4)];
+    ch.splice(100, 6);                       /* deletion */
+    var ins = []; for (var k = 0; k < 12; k++) ins.push(bases[Math.floor(rnd() * 4)]);
+    ch.splice.apply(ch, [220, 0].concat(ins)); /* insertion */
+    state.raw1 = A; state.raw2 = ch.join('');
+    $('editArea').value = state.raw1; $('editArea2').value = state.raw2;
+    $('selAlgo').value = 'global'; $('selScheme').value = 'nuc44';
+    $('numOpen').value = '8'; $('numExtend').value = '1';
+    run(true);
+  }
+  function clearAll() {
+    state.raw1 = ''; state.raw2 = ''; state.result = null;
+    $('editArea').value = ''; $('editArea2').value = '';
+    $('alnPanel').hidden = true; $('statRow').hidden = true;
+    $('emptyWrap').style.display = 'block';
+    updateMeta(); persist();
+  }
+
+  function applyLang() {
+    document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-CN';
+    document.title = LANG === 'en' ? 'aligner · Pairwise Alignment' : 'aligner · 双序列比对';
+    var i, nodes = document.querySelectorAll('[data-i18n]');
+    for (i = 0; i < nodes.length; i++) nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+    nodes = document.querySelectorAll('[data-i18n-ph]');
+    for (i = 0; i < nodes.length; i++) nodes[i].setAttribute('placeholder', t(nodes[i].getAttribute('data-i18n-ph')));
+    nodes = document.querySelectorAll('[data-i18n-html]');
+    for (i = 0; i < nodes.length; i++) nodes[i].innerHTML = t(nodes[i].getAttribute('data-i18n-html'));
+    $('btnZh').classList.toggle('on', LANG === 'zh');
+    $('btnEn').classList.toggle('on', LANG === 'en');
+    updateMeta();
+    if (state.result) renderResult();
+  }
+
+  /* ---------- events ---------- */
+  document.querySelectorAll('.tab').forEach(function (btn) {
+    btn.addEventListener('click', function () { setPane(btn.getAttribute('data-pane')); });
+  });
+  $('editArea').addEventListener('input', function () { state.raw1 = this.value; updateMeta(); persist(); });
+  $('editArea2').addEventListener('input', function () { state.raw2 = this.value; updateMeta(); persist(); });
+  $('btnAlign').addEventListener('click', function () { run(true); });
+  $('btnDemo').addEventListener('click', loadDemo);
+  $('btnClear').addEventListener('click', clearAll);
+  $('btnFasta').addEventListener('click', copyFasta);
+  $('btnClustal').addEventListener('click', copyClustal);
+  $('btnCopy1').addEventListener('click', function () { state.raw1 = state.raw2; $('editArea').value = state.raw1; updateMeta(); persist(); });
+  $('btnCopy2').addEventListener('click', function () { state.raw2 = state.raw1; $('editArea2').value = state.raw2; updateMeta(); persist(); });
+  $('selWidth').addEventListener('change', function () { if (state.result) renderAlignment(); });
+  $('selAlgo').addEventListener('change', function () { if (state.result) run(false); persist(); });
+  $('selScheme').addEventListener('change', function () { if (state.result) run(false); persist(); });
+  $('numOpen').addEventListener('change', function () { if (state.result) run(false); persist(); });
+  $('numExtend').addEventListener('change', function () { if (state.result) run(false); persist(); });
+  $('btnZh').addEventListener('click', function () { LANG = 'zh'; applyLang(); persist(); });
+  $('btnEn').addEventListener('click', function () { LANG = 'en'; applyLang(); persist(); });
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(true); }
+  });
+
+  /* ---------- init ---------- */
+  var nav = (navigator.language || 'zh').toLowerCase();
+  LANG = nav.indexOf('zh') === 0 ? 'zh' : 'en';
+  restore();
+  var qs = (location.search || '').toLowerCase();
+  if (/[?&]lang=en/.test(qs)) LANG = 'en';
+  else if (/[?&]lang=zh/.test(qs)) LANG = 'zh';
+  applyLang();
+  setPane(1);
+  if (/[?&]demo=1/.test(qs)) loadDemo();
+  else if (state.raw1 && state.raw2) run(false);
+})();
+</script>
+</body>
+</html>
